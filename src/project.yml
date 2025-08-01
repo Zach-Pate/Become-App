@@ -1,0 +1,53 @@
+name: Become
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "18.0"
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: ZZZR99R435
+    GENERATE_INFOPLIST_FILE: YES
+    # Let Xcode generate a default Info.plist
+
+targets:
+  Become:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: "Become"
+        infoPlist: "Become/Info.plist"
+    settings:
+      base:
+        PRODUCT_NAME: Become
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.Become
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+      configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: "Become/Become.entitlements"
+        Release:
+          CODE_SIGN_ENTITLEMENTS: "Become/Become.entitlements"
+
+postBuildScripts:
+  - name: Post-build
+    script: |
+      # any post build scripts
+
+schemes:
+  Become:
+    build:
+      targets:
+        Become: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

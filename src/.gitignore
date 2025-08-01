@@ -1,0 +1,65 @@
+# Xcode
+#
+# gitignore contributors: remember to keep this file platform-agnostic
+# gitignore developers: add platform-specific rules in your .gitignore_local file
+#
+# Created by https://www.toptal.com/developers/gitignore/api/swift
+# Edit at https://www.toptal.com/developers/gitignore?templates=swift
+
+### Swift ###
+# Swift Package Manager
+#
+# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
+# Packages/
+#
+# Xcode generated
+#
+.build/
+Packages
+/*.xcodeproj
+project.xcworkspace
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+#
+# Swift Playgrounds
+#
+timeline.xctimeline
+playground.xcworkspace
+#
+# Build generated
+#
+build/
+DerivedData/
+#
+# Various settings
+#
+*.xsettings
+#
+# Other
+#
+*.app
+*.ipa
+#
+# Carthage
+#
+Carthage/Build
+Carthage/Checkouts
+#
+# fastlane
+#
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+#
+# Code Injection
+#
+**/injectionforxcode/
+#
+# Accidents
+#
+.DS_Store
+
+# End of https://www.toptal.com/developers/gitignore/api/swift

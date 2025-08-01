@@ -1,0 +1,71 @@
+definitions:
+  common_env: &common_env
+    xcode: latest
+    cocoapods: default
+
+workflows:
+  ios-release:
+    name: iOS Release Workflow
+    instance_type: mac_mini_m2
+    max_build_duration: 120
+    environment:
+      <<: *common_env
+      groups:
+        - appstore_credentials       # Contains your API key and issuer info
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.example.Become
+    integrations:
+      app_store_connect: "Codemagic API Key"
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate --spec project.yml
+
+      - name: Increment build number
+        script: |
+          agvtool new-version -all $(( $BUILD_NUMBER + 1 ))
+
+      - name: Fetch signing files
+        script: |
+          keychain initialize
+          BUNDLE_ID=$(xcode-project detect-bundle-id)
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      - name: Verify generated files
+        script: |
+          echo "🗂️ Listing repository root:"
+          ls -alh .
+          echo "🗂️ Looking specifically for .xcodeproj:"
+          ls -alh *.xcodeproj || true
+
+      - name: Build IPA
+        script: |
+          xcodebuild archive \
+            -project "Become.xcodeproj" \
+            -scheme "Become" \
+            -configuration Release \
+            -archivePath "$CM_BUILD_DIR/build/App.xcarchive"
+
+          xcodebuild -exportArchive \
+            -archivePath "$CM_BUILD_DIR/build/App.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$CM_BUILD_DIR/build/ipa"
+
+    artifacts:
+      - build/**/*.ipa
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - QA
+        submit_to_app_store: false
