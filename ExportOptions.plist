@@ -7,7 +7,12 @@
     <key>teamID</key>
     <string>ZZZR99R435</string>
     <key>signingStyle</key>
-    <string>automatic</string>
+    <string>manual</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.example.Become-App</key>
+        <string>Become-App AppStore Profile</string>
+    </dict>
     <key>stripSwiftSymbols</key>
     <true/>
     <key>uploadBitcode</key>
