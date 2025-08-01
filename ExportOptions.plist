@@ -11,7 +11,7 @@
     <key>provisioningProfiles</key>
     <dict>
         <key>com.example.Become-App</key>
-        <string>Become-App Appstore Profile</string>
+        <string>Become-App AppStore Profile</string>
     </dict>
     <key>stripSwiftSymbols</key>
     <true/>
