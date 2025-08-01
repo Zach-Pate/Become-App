@@ -14,7 +14,7 @@ workflows:
         - appstore_credentials       # Contains your API key and issuer info
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.example.Become
+        bundle_identifier: com.example.Become-App
     integrations:
       app_store_connect: "Codemagic API Key"
     scripts:
