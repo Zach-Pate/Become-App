@@ -20,8 +20,7 @@ targets:
       - path: "Become/Assets.xcassets"
     settings:
       base:
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        ASSETCATALOG_COMPILER_GLOBAL_APP_ICON_NAME: AppIcon
+        ASSET_CATALOG_SPECIFICATIONS: "Become/Assets.xcassets"
         PRODUCT_NAME: Become
         PRODUCT_BUNDLE_IDENTIFIER: com.example.Become-App
         MARKETING_VERSION: "1.0"
