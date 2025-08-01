@@ -17,9 +17,11 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: "Become"
-        infoPlist: "Become/Info.plist"
+      - path: "Become/Assets.xcassets"
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_APP_ICON_NAME: AppIcon
         PRODUCT_NAME: Become
         PRODUCT_BUNDLE_IDENTIFIER: com.example.Become-App
         MARKETING_VERSION: "1.0"
