@@ -265,6 +265,8 @@ struct EventTileView: View {
     @State private var initialEvent: DayEvent?
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
+    private let fineSnapIncrement: TimeInterval = 60 // 1 minute
+    private let velocityThreshold: CGFloat = 100 // Threshold for slow vs. fast drag
 
     var body: some View {
         ZStack {
@@ -331,22 +333,25 @@ struct EventTileView: View {
                 }
                 .onEnded { gesture in
                     guard let initialEvent = initialEvent else { return }
+                    
+                    let velocity = gesture.predictedEndTranslation.height
+                    let currentSnap = abs(velocity) < velocityThreshold ? fineSnapIncrement : snapIncrement
 
                     switch dragType {
                     case .moving:
                         let timeOffset = (gesture.translation.height / hourHeight) * 3600
                         let newStartTime = initialEvent.startTime + timeOffset
-                        event.startTime = round(newStartTime / snapIncrement) * snapIncrement
+                        event.startTime = round(newStartTime / currentSnap) * currentSnap
                     case .resizingTop:
                         let timeOffset = (gesture.translation.height / hourHeight) * 3600
                         let newStartTime = initialEvent.startTime + timeOffset
-                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                        let snappedStartTime = round(newStartTime / currentSnap) * currentSnap
                         let durationOffset = initialEvent.startTime - snappedStartTime
                         let newDuration = initialEvent.duration + durationOffset
                         
-                        if newDuration >= snapIncrement {
+                        if newDuration >= currentSnap {
                             event.startTime = snappedStartTime
-                            event.duration = round(newDuration / snapIncrement) * snapIncrement
+                            event.duration = round(newDuration / currentSnap) * currentSnap
                         } else {
                             event.startTime = initialEvent.startTime
                             event.duration = initialEvent.duration
@@ -354,9 +359,9 @@ struct EventTileView: View {
                     case .resizingBottom:
                         let timeOffset = (gesture.translation.height / hourHeight) * 3600
                         let newDuration = initialEvent.duration + timeOffset
-                        let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
+                        let snappedDuration = round(newDuration / currentSnap) * currentSnap
                         
-                        if snappedDuration >= snapIncrement {
+                        if snappedDuration >= currentSnap {
                             event.duration = snappedDuration
                         } else {
                             event.duration = initialEvent.duration
