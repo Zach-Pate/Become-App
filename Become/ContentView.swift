@@ -25,7 +25,7 @@ struct ContentView: View {
     /// The array of events for the day. This is sample data.
     @State private var events: [DayEvent] = [
         DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, color: .blue),
-        DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 3600, color: .green),
+        DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, color: .green),
         DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, color: .orange),
         DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, color: .purple),
         DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, color: .teal)
@@ -41,6 +41,8 @@ struct ContentView: View {
     private let hourHeight: CGFloat = 80.0
     /// The total number of hours to display in the timeline.
     private let totalHours = 24
+    /// The time increment for snapping events, in seconds (15 minutes).
+    private let snapIncrement: TimeInterval = 15 * 60
 
     // MARK: - Body
     
@@ -79,9 +81,12 @@ struct ContentView: View {
                                         let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
                                         let newStartTime = draggingEvent.startTime + timeOffset
                                         
+                                        // Snap the new start time to the nearest 15-minute increment.
+                                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                                        
                                         // Find the event in the array and update its start time.
                                         if let index = events.firstIndex(where: { $0.id == draggingEvent.id }) {
-                                            events[index].startTime = newStartTime
+                                            events[index].startTime = snappedStartTime
                                         }
                                     }
                                     // Reset the dragging state.

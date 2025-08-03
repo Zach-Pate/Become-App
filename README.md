@@ -1,8 +1,15 @@
 > **Note:** These files build perfectly. Please be very sparing in editing files to ensure that the build continues to work.
 
-# Become
+# Become - A Daily Planner App
 
-This is a simple "Hello, World!" SwiftUI app for iOS.
+This is a SwiftUI app that helps you plan your day. It features a vertical timeline where you can schedule and rearrange events.
+
+## Features
+
+*   **Vertical Timeline:** The main view is a vertical timeline that displays your day's schedule.
+*   **Draggable Events:** You can drag and drop events to reschedule them.
+*   **Snapping:** Events snap to 15-minute increments for easy alignment.
+*   **Dynamic Tile Sizing:** Event tiles are sized based on their duration.
 
 ## Getting Started
 
@@ -22,6 +29,7 @@ Now, you can open the `Become.xcodeproj` file in Xcode and run the app.
 
 ## Key Technologies
 
+*   **SwiftUI:** The app is built entirely with SwiftUI.
 *   **XcodeGen:** We use XcodeGen to manage the Xcode project. The project's structure and build settings are defined in the `project.yml` file. **Please do not edit the `.xcodeproj` file directly.**
 *   **Codemagic:** The `codemagic.yaml` file defines our CI/CD pipeline. It automates the process of building, signing, and deploying the app to App Store Connect.
 
