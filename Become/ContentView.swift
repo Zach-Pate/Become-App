@@ -242,24 +242,30 @@ struct DateSelectorView: View {
     
     var body: some View {
         HStack {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(dates, id: \.self) { date in
-                        VStack {
-                            Text(dayOfWeek(for: date))
-                                .font(.caption)
-                            Text(dayOfMonth(for: date))
-                                .font(.headline)
-                        }
-                        .padding(8)
-                        .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
-                        .cornerRadius(8)
-                        .onTapGesture {
-                            selectedDate = date
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(dates, id: \.self) { date in
+                            VStack {
+                                Text(dayOfWeek(for: date))
+                                    .font(.caption)
+                                Text(dayOfMonth(for: date))
+                                    .font(.headline)
+                            }
+                            .id(date)
+                            .padding(8)
+                            .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
+                            .cornerRadius(8)
+                            .onTapGesture {
+                                selectedDate = date
+                            }
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .onAppear {
+                    proxy.scrollTo(selectedDate, anchor: .center)
+                }
             }
             Button(action: { isAddingEvent = true }) {
                 Image(systemName: "plus.circle.fill")
