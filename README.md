@@ -6,6 +6,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 
 ## Features
 
+*   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days.
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
@@ -18,7 +19,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
 *   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
-*   **Stable Persistence:** Your schedule is reliably saved and restored between sessions.
+*   **Stable Persistence:** Your schedule is reliably saved and restored between sessions on a per-day basis.
 
 ## Getting Started
 

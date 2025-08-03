@@ -87,6 +87,7 @@ struct ContentView: View {
     /// The array of events for the day.
     @State private var events: [DayEvent] = []
     @State private var currentTime: TimeInterval = 0
+    @State private var selectedDate: Date = Date()
 
     // MARK: - View Constants
     
@@ -100,37 +101,51 @@ struct ContentView: View {
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            // The ZStack layers the event tiles on top of the timeline background.
-            ZStack(alignment: .topLeading) {
-                // The background timeline view.
-                TimelineView()
-                    .frame(height: hourHeight * CGFloat(totalHours))
+        VStack {
+            DateSelectorView(selectedDate: $selectedDate)
+            ScrollView {
+                // The ZStack layers the event tiles on top of the timeline background.
+                ZStack(alignment: .topLeading) {
+                    // The background timeline view.
+                    TimelineView()
+                        .frame(height: hourHeight * CGFloat(totalHours))
 
-                // Iterate over the events and create a view for each one.
-                ForEach($events) { $event in
-                    let tileHeight = height(for: event.duration)
-                    EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: saveEvents, tileHeight: tileHeight)
-                        // Position the event tile based on its start time.
-                        .offset(y: yOffset(for: event.startTime))
-                        // Set the height of the tile based on its duration.
-                        .frame(height: tileHeight)
-                        // Add padding to avoid overlapping the time labels.
-                        .padding(.leading, 60)
+                    // Iterate over the events and create a view for each one.
+                    ForEach($events) { $event in
+                        let tileHeight = height(for: event.duration)
+                        EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, tileHeight: tileHeight)
+                            // Position the event tile based on its start time.
+                            .offset(y: yOffset(for: event.startTime))
+                            // Set the height of the tile based on its duration.
+                            .frame(height: tileHeight)
+                            // Add padding to avoid overlapping the time labels.
+                            .padding(.leading, 60)
+                    }
+                    
+                    if Calendar.current.isDateInToday(selectedDate) {
+                        CurrentTimeIndicator(hourHeight: hourHeight)
+                            .offset(y: yOffset(for: currentTime))
+                    }
                 }
-                
-                CurrentTimeIndicator(hourHeight: hourHeight)
-                    .offset(y: yOffset(for: currentTime))
             }
         }
-        .navigationTitle("Today's Plan")
+        .navigationTitle(dateFormatter.string(from: selectedDate))
         .onAppear(perform: setup)
+        .onChange(of: selectedDate) { _ in
+            loadEvents(for: selectedDate)
+        }
+    }
+    
+    private var dateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter
     }
 
     // MARK: - Helper Functions
     
     private func setup() {
-        loadEvents()
+        loadEvents(for: selectedDate)
         // Set up a timer to update the current time every minute.
         Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             updateCurrentTime()
@@ -163,16 +178,24 @@ struct ContentView: View {
     
     // MARK: - Data Persistence
     
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+    
     /// Saves the current events to UserDefaults.
-    private func saveEvents() {
+    private func saveEvents(for date: Date) {
+        let key = dateKey(for: date)
         if let encoded = try? JSONEncoder().encode(events) {
-            UserDefaults.standard.set(encoded, forKey: "events")
+            UserDefaults.standard.set(encoded, forKey: key)
         }
     }
     
     /// Loads events from UserDefaults, or uses sample data if none are found.
-    private func loadEvents() {
-        if let data = UserDefaults.standard.data(forKey: "events") {
+    private func loadEvents(for date: Date) {
+        let key = dateKey(for: date)
+        if let data = UserDefaults.standard.data(forKey: key) {
             if let decoded = try? JSONDecoder().decode([DayEvent].self, from: data) {
                 events = decoded
                 return
@@ -190,6 +213,56 @@ struct ContentView: View {
 }
 
 // MARK: - Subviews
+
+struct DateSelectorView: View {
+    @Binding var selectedDate: Date
+    
+    private var dates: [Date] {
+        var dates: [Date] = []
+        let calendar = Calendar.current
+        for i in -30...30 {
+            if let date = calendar.date(byAdding: .day, value: i, to: Date()) {
+                dates.append(date)
+            }
+        }
+        return dates
+    }
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(dates, id: \.self) { date in
+                    VStack {
+                        Text(dayOfWeek(for: date))
+                            .font(.caption)
+                        Text(dayOfMonth(for: date))
+                            .font(.headline)
+                    }
+                    .padding(8)
+                    .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
+                    .cornerRadius(8)
+                    .onTapGesture {
+                        selectedDate = date
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    private func dayOfWeek(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+    
+    private func dayOfMonth(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
+    }
+}
+
 
 /// A view that draws the background of the timeline, including the time labels and hour lines.
 struct TimelineView: View {
