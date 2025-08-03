@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Models
 
@@ -37,8 +38,8 @@ struct DayEvent: Identifiable, Equatable, Codable {
         title = try container.decode(String.self, forKey: .title)
         startTime = try container.decode(TimeInterval.self, forKey: .startTime)
         duration = try container.decode(TimeInterval.self, forKey: .duration)
-        let colorName = try container.decode(String.self, forKey: .color)
-        color = Color(colorName)
+        let codableColor = try container.decode(CodableColor.self, forKey: .color)
+        color = Color(codableColor)
     }
     
     // Initializer for creating events without decoding.
@@ -51,28 +52,28 @@ struct DayEvent: Identifiable, Equatable, Codable {
     }
 }
 
-// Extension to convert Color to and from a simple string representation.
+/// A Codable representation of a SwiftUI Color.
+struct CodableColor: Codable {
+    var red: CGFloat
+    var green: CGFloat
+    var blue: CGFloat
+    var alpha: CGFloat
+}
+
+// Extension to convert Color to and from the CodableColor representation.
 extension Color {
-    func toCodable() -> String {
-        switch self {
-        case .blue: return "blue"
-        case .green: return "green"
-        case .orange: return "orange"
-        case .purple: return "purple"
-        case .teal: return "teal"
-        default: return "gray"
-        }
+    func toCodable() -> CodableColor {
+        let uiColor = UIColor(self)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return CodableColor(red: red, green: green, blue: blue, alpha: alpha)
     }
     
-    init(_ colorName: String) {
-        switch colorName {
-        case "blue": self = .blue
-        case "green": self = .green
-        case "orange": self = .orange
-        case "purple": self = .purple
-        case "teal": self = .teal
-        default: self = .gray
-        }
+    init(_ codableColor: CodableColor) {
+        self.init(.sRGB, red: Double(codableColor.red), green: Double(codableColor.green), blue: Double(codableColor.blue), opacity: Double(codableColor.alpha))
     }
 }
 
@@ -111,11 +112,12 @@ struct ContentView: View {
 
                 // Iterate over the events and create a view for each one.
                 ForEach($events) { $event in
-                    EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: saveEvents)
+                    let tileHeight = height(for: event.duration)
+                    EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: saveEvents, tileHeight: tileHeight)
                         // Position the event tile based on its start time and any drag offset.
                         .offset(y: yOffset(for: event))
                         // Set the height of the tile based on its duration.
-                        .frame(height: height(for: event.duration))
+                        .frame(height: tileHeight)
                         // Add padding to avoid overlapping the time labels.
                         .padding(.leading, 60)
                         // Add a drag gesture to allow moving the event.
@@ -275,6 +277,7 @@ struct EventTileView: View {
     let hourHeight: CGFloat
     let snapIncrement: TimeInterval
     let saveEvents: () -> Void
+    let tileHeight: CGFloat
     
     @State private var isResizingTop = false
     @State private var isResizingBottom = false
@@ -288,16 +291,14 @@ struct EventTileView: View {
                 .fill(event.color.opacity(0.8))
             
             // The content of the tile.
-            VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.9))
+            if tileHeight >= 20 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(event.title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+                .padding(8)
             }
-            .padding(8)
             
             // Top resize handle
             VStack {
