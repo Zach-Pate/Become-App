@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - Models
 
 /// Represents a single event in the daily schedule.
-struct DayEvent: Identifiable, Equatable {
+struct DayEvent: Identifiable, Equatable, Codable {
     /// A unique identifier for the event.
-    let id = UUID()
+    let id: UUID
     /// The title or name of the event.
     var title: String
     /// The start time of the event, stored as seconds from midnight.
@@ -14,7 +14,63 @@ struct DayEvent: Identifiable, Equatable {
     var duration: TimeInterval
     /// The color used to display the event tile.
     var color: Color
+    
+    // Custom coding keys to handle the non-Codable Color type.
+    enum CodingKeys: String, CodingKey {
+        case id, title, startTime, duration, color
+    }
+    
+    // Custom encoding to convert Color to a Codable format.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(startTime, forKey: .startTime)
+        try container.encode(duration, forKey: .duration)
+        try container.encode(color.toCodable(), forKey: .color)
+    }
+    
+    // Custom decoding to convert from a Codable format back to Color.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        startTime = try container.decode(TimeInterval.self, forKey: .startTime)
+        duration = try container.decode(TimeInterval.self, forKey: .duration)
+        let codableColor = try container.decode(CodableColor.self, forKey: .color)
+        color = Color(codableColor)
+    }
+    
+    // Initializer for creating events without decoding.
+    init(id: UUID = UUID(), title: String, startTime: TimeInterval, duration: TimeInterval, color: Color) {
+        self.id = id
+        self.title = title
+        self.startTime = startTime
+        self.duration = duration
+        self.color = color
+    }
 }
+
+/// A Codable representation of a SwiftUI Color.
+struct CodableColor: Codable {
+    var red: Double
+    var green: Double
+    var blue: Double
+    var opacity: Double
+}
+
+// Extension to convert Color to and from the CodableColor representation.
+extension Color {
+    func toCodable() -> CodableColor {
+        let components = self.cgColor?.components ?? [0, 0, 0, 1]
+        return CodableColor(red: components[0], green: components[1], blue: components[2], opacity: components[3])
+    }
+    
+    init(_ codableColor: CodableColor) {
+        self.init(.sRGB, red: codableColor.red, green: codableColor.green, blue: codableColor.blue, opacity: codableColor.opacity)
+    }
+}
+
 
 // MARK: - Main Content View
 
@@ -22,14 +78,8 @@ struct DayEvent: Identifiable, Equatable {
 struct ContentView: View {
     // MARK: - State Properties
     
-    /// The array of events for the day. This is sample data.
-    @State private var events: [DayEvent] = [
-        DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, color: .blue),
-        DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, color: .green),
-        DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, color: .orange),
-        DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, color: .purple),
-        DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, color: .teal)
-    ]
+    /// The array of events for the day.
+    @State private var events: [DayEvent] = []
     /// The event currently being dragged by the user.
     @State private var draggingEvent: DayEvent?
     /// The offset of the drag gesture.
@@ -87,6 +137,7 @@ struct ContentView: View {
                                         // Find the event in the array and update its start time.
                                         if let index = events.firstIndex(where: { $0.id == draggingEvent.id }) {
                                             events[index].startTime = snappedStartTime
+                                            saveEvents()
                                         }
                                     }
                                     // Reset the dragging state.
@@ -98,6 +149,7 @@ struct ContentView: View {
             }
         }
         .navigationTitle("Today's Plan")
+        .onAppear(perform: loadEvents)
     }
 
     // MARK: - Helper Functions
@@ -122,6 +174,33 @@ struct ContentView: View {
     private func height(for duration: TimeInterval) -> CGFloat {
         let hours = duration / 3600
         return CGFloat(hours) * hourHeight
+    }
+    
+    // MARK: - Data Persistence
+    
+    /// Saves the current events to UserDefaults.
+    private func saveEvents() {
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: "events")
+        }
+    }
+    
+    /// Loads events from UserDefaults, or uses sample data if none are found.
+    private func loadEvents() {
+        if let data = UserDefaults.standard.data(forKey: "events") {
+            if let decoded = try? JSONDecoder().decode([DayEvent].self, from: data) {
+                events = decoded
+                return
+            }
+        }
+        // If no saved data is found, load the sample data.
+        events = [
+            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, color: .blue),
+            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, color: .green),
+            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, color: .orange),
+            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, color: .purple),
+            DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, color: .teal)
+        ]
     }
 }
 
