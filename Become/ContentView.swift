@@ -86,10 +86,6 @@ struct ContentView: View {
     
     /// The array of events for the day.
     @State private var events: [DayEvent] = []
-    /// The event currently being dragged by the user.
-    @State private var draggingEvent: DayEvent?
-    /// The offset of the drag gesture.
-    @State private var dragOffset: CGSize = .zero
 
     // MARK: - View Constants
     
@@ -114,44 +110,12 @@ struct ContentView: View {
                 ForEach($events) { $event in
                     let tileHeight = height(for: event.duration)
                     EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: saveEvents, tileHeight: tileHeight)
-                        // Position the event tile based on its start time and any drag offset.
-                        .offset(y: yOffset(for: event))
+                        // Position the event tile based on its start time.
+                        .offset(y: yOffset(for: event.startTime))
                         // Set the height of the tile based on its duration.
                         .frame(height: tileHeight)
                         // Add padding to avoid overlapping the time labels.
                         .padding(.leading, 60)
-                        // Add a drag gesture to allow moving the event.
-                        .gesture(
-                            DragGesture()
-                                .onChanged { gesture in
-                                    // When the drag starts, record the event being dragged.
-                                    if draggingEvent == nil {
-                                        draggingEvent = event
-                                    }
-                                    // Update the drag offset as the user moves their finger.
-                                    dragOffset = gesture.translation
-                                }
-                                .onEnded { gesture in
-                                    // When the drag ends, update the event's start time.
-                                    if let draggingEvent = draggingEvent {
-                                        // Calculate the time offset based on the drag distance.
-                                        let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
-                                        let newStartTime = draggingEvent.startTime + timeOffset
-                                        
-                                        // Snap the new start time to the nearest 15-minute increment.
-                                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                                        
-                                        // Find the event in the array and update its start time.
-                                        if let index = events.firstIndex(where: { $0.id == draggingEvent.id }) {
-                                            events[index].startTime = snappedStartTime
-                                            saveEvents()
-                                        }
-                                    }
-                                    // Reset the dragging state.
-                                    draggingEvent = nil
-                                    dragOffset = .zero
-                                }
-                        )
                 }
             }
         }
@@ -162,16 +126,10 @@ struct ContentView: View {
     // MARK: - Helper Functions
     
     /// Calculates the vertical offset for an event tile.
-    /// - Parameter event: The event to calculate the offset for.
+    /// - Parameter startTime: The start time of the event.
     /// - Returns: The vertical offset in points.
-    private func yOffset(for event: DayEvent) -> CGFloat {
-        // If this event is being dragged, calculate the offset based on the drag position.
-        if event.id == draggingEvent?.id {
-            let hours = (draggingEvent?.startTime ?? 0) / 3600
-            return CGFloat(hours) * hourHeight + dragOffset.height
-        }
-        // Otherwise, calculate the offset based on the event's start time.
-        let hours = event.startTime / 3600
+    private func yOffset(for startTime: TimeInterval) -> CGFloat {
+        let hours = startTime / 3600
         return CGFloat(hours) * hourHeight
     }
     
@@ -279,108 +237,97 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     let tileHeight: CGFloat
     
-    @State private var isResizingTop = false
-    @State private var isResizingBottom = false
+    @State private var dragOffset: CGSize = .zero
+    @State private var isDragging = false
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // The background of the tile.
-            RoundedRectangle(cornerRadius: 8)
-                .fill(event.color.opacity(0.8))
-            
-            // The content of the tile.
-            if tileHeight >= 20 {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 0) {
+            // Top resize handle
+            Rectangle()
+                .fill(Color.white.opacity(0.5))
+                .frame(height: 10)
+                .cornerRadius(2)
+                .padding(.vertical, 4)
+                .gesture(
+                    DragGesture()
+                        .onChanged { gesture in
+                            let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                            let newStartTime = event.startTime + timeOffset
+                            let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                            
+                            let durationOffset = event.startTime - snappedStartTime
+                            let newDuration = event.duration + durationOffset
+                            
+                            if newDuration >= snapIncrement {
+                                event.startTime = snappedStartTime
+                                event.duration = newDuration
+                            }
+                        }
+                        .onEnded { _ in
+                            saveEvents()
+                        }
+                )
+
+            // Main content area for moving the tile
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(event.color.opacity(0.8))
+                
+                if tileHeight >= 20 {
                     Text(event.title)
                         .font(.headline)
                         .foregroundColor(.white)
+                        .padding(8)
                 }
-                .padding(8)
             }
-            
-            // Top resize handle
-            VStack {
-                Rectangle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(height: 4)
-                    .cornerRadius(2)
-                    .padding(.horizontal, 20)
-                Spacer()
-            }
+            .frame(minHeight: 0, maxHeight: .infinity)
             .contentShape(Rectangle())
+            .offset(y: dragOffset.height)
             .gesture(
                 DragGesture()
                     .onChanged { gesture in
-                        if !isResizingTop {
-                            isResizingTop = true
+                        if !isDragging {
+                            isDragging = true
                             feedbackGenerator.impactOccurred()
                         }
-                        let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
-                        let newStartTime = event.startTime + timeOffset
-                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                        
-                        let durationOffset = event.startTime - snappedStartTime
-                        let newDuration = event.duration + durationOffset
-                        
-                        if newDuration >= snapIncrement {
-                            event.startTime = snappedStartTime
-                            event.duration = newDuration
-                        }
+                        dragOffset = gesture.translation
                     }
-                    .onEnded { _ in
-                        isResizingTop = false
+                    .onEnded { gesture in
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
+                        event.startTime = round(newStartTime / snapIncrement) * snapIncrement
+                        
+                        isDragging = false
+                        dragOffset = .zero
                         saveEvents()
                     }
             )
             
             // Bottom resize handle
-            VStack {
-                Spacer()
-                Rectangle()
-                    .fill(Color.white.opacity(0.5))
-                    .frame(height: 4)
-                    .cornerRadius(2)
-                    .padding(.horizontal, 20)
-            }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .onChanged { gesture in
-                        if !isResizingBottom {
-                            isResizingBottom = true
-                            feedbackGenerator.impactOccurred()
+            Rectangle()
+                .fill(Color.white.opacity(0.5))
+                .frame(height: 10)
+                .cornerRadius(2)
+                .padding(.vertical, 4)
+                .gesture(
+                    DragGesture()
+                        .onChanged { gesture in
+                            let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                            let newDuration = event.duration + timeOffset
+                            let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
+                            
+                            if snappedDuration >= snapIncrement {
+                                event.duration = snappedDuration
+                            }
                         }
-                        let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
-                        let newDuration = event.duration + timeOffset
-                        let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
-                        
-                        if snappedDuration >= snapIncrement {
-                            event.duration = snappedDuration
+                        .onEnded { _ in
+                            saveEvents()
                         }
-                    }
-                    .onEnded { _ in
-                        isResizingBottom = false
-                        saveEvents()
-                    }
-            )
+                )
         }
         .padding(.trailing, 10)
-    }
-
-    /// Formats a time interval into a human-readable time string.
-    /// - Parameter timeInterval: The time interval to format, in seconds from midnight.
-    /// - Returns: A formatted time string (e.g., "9:00 AM").
-    private func formattedTime(_ timeInterval: TimeInterval) -> String {
-        // Get the start of the current day.
-        let startOfDay = Calendar.current.startOfDay(for: Date())
-        // Add the time interval to the start of the day to get the correct date.
-        let date = startOfDay.addingTimeInterval(timeInterval)
-        
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
     }
 }
 

@@ -7,10 +7,12 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Features
 
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
-*   **Draggable Events:** You can drag and drop events to reschedule them.
-*   **Resizable Events:** You can drag the top or bottom of an event to change its duration.
+*   **Intuitive Gestures:**
+    *   Drag the body of an event to move it.
+    *   Drag the top or bottom handles to resize it.
+*   **Proportional Resizing:** The event duration changes in direct proportion to how far you drag the resize handles.
 *   **Snapping:** Events snap to 15-minute increments for easy alignment.
-*   **Haptic Feedback:** The app provides haptic feedback when you're resizing an event.
+*   **Haptic Feedback:** The app provides haptic feedback when you're moving or resizing an event.
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
 *   **Adaptive Tile Content:** The event title is hidden on smaller tiles to avoid clutter.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
