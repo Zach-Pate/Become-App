@@ -116,6 +116,9 @@ struct ContentView: View {
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
                         EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                            .offset(y: yOffset(for: event.startTime))
+                            .frame(height: height(for: event.duration))
+                            .padding(.leading, 60)
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -367,7 +370,6 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
     
-    @State private var isDragging = false
     @GestureState private var dragOffset: CGSize = .zero
     
     private var tileHeight: CGFloat {
@@ -375,22 +377,23 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        let combinedGesture = LongPressGesture(minimumDuration: 0.5)
+        let longPressGesture = LongPressGesture(minimumDuration: 0.5)
             .onEnded { _ in
                 editingEvent = event
             }
-            .sequenced(before: DragGesture()
-                .onChanged { _ in
-                    isDragging = true
-                }
-                .onEnded { gesture in
-                    let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                    let newStartTime = event.startTime + timeOffset
-                    event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                    isDragging = false
-                    saveEvents()
-                }
-            )
+        
+        let dragGesture = DragGesture()
+            .updating($dragOffset) { value, state, _ in
+                state = value.translation
+            }
+            .onEnded { gesture in
+                let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                let newStartTime = event.startTime + timeOffset
+                event.startTime = round(newStartTime / snapIncrement) * snapIncrement
+                saveEvents()
+            }
+        
+        let combined = longPressGesture.sequenced(before: dragGesture)
 
         ZStack {
             RoundedRectangle(cornerRadius: 8)
@@ -411,8 +414,8 @@ struct EventTileView: View {
             .padding(8)
         }
         .padding(.trailing, 10)
-        .offset(y: isDragging ? dragOffset.height : 0)
-        .gesture(combinedGesture)
+        .offset(y: dragOffset.height)
+        .gesture(combined)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
