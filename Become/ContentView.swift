@@ -274,7 +274,12 @@ struct EventTileView: View {
         }
         
         var isDragging: Bool {
-            return self != .inactive
+            switch self {
+            case .inactive:
+                return false
+            default:
+                return true
+            }
         }
     }
     
