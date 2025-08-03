@@ -257,33 +257,12 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     let tileHeight: CGFloat
     
-    enum DragState {
-        case inactive, moving(translation: CGSize), resizingTop(translation: CGSize), resizingBottom(translation: CGSize)
-        
-        var translation: CGSize {
-            switch self {
-            case .inactive:
-                return .zero
-            case .moving(let translation):
-                return translation
-            case .resizingTop(let translation):
-                return translation
-            case .resizingBottom(let translation):
-                return translation
-            }
-        }
-        
-        var isDragging: Bool {
-            switch self {
-            case .inactive:
-                return false
-            default:
-                return true
-            }
-        }
+    enum DragType {
+        case inactive, moving, resizingTop, resizingBottom
     }
     
-    @State private var dragState: DragState = .inactive
+    @State private var dragType: DragType = .inactive
+    @State private var initialEvent: DayEvent?
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
 
@@ -307,64 +286,87 @@ struct EventTileView: View {
             .padding(8)
         }
         .padding(.trailing, 10)
-        .offset(y: dragState.translation.height)
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { gesture in
-                    if !dragState.isDragging {
-                        let initialDragLocation = gesture.startLocation
-                        if initialDragLocation.y < 15 {
-                            dragState = .resizingTop(translation: gesture.translation)
-                        } else if initialDragLocation.y > tileHeight - 15 {
-                            dragState = .resizingBottom(translation: gesture.translation)
-                        } else {
-                            dragState = .moving(translation: gesture.translation)
-                        }
+                    if dragType == .inactive {
                         feedbackGenerator.impactOccurred()
-                    } else {
-                        switch dragState {
-                        case .moving:
-                            dragState = .moving(translation: gesture.translation)
-                        case .resizingTop:
-                            dragState = .resizingTop(translation: gesture.translation)
-                        case .resizingBottom:
-                            dragState = .resizingBottom(translation: gesture.translation)
-                        case .inactive:
-                            break
+                        initialEvent = event
+                        
+                        let location = gesture.startLocation
+                        if location.y < 15 {
+                            dragType = .resizingTop
+                        } else if location.y > tileHeight - 15 {
+                            dragType = .resizingBottom
+                        } else {
+                            dragType = .moving
                         }
+                    }
+                    
+                    guard let initialEvent = initialEvent else { return }
+
+                    switch dragType {
+                    case .moving:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        event.startTime = initialEvent.startTime + timeOffset
+                    case .resizingTop:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newStartTime = initialEvent.startTime + timeOffset
+                        let durationOffset = initialEvent.startTime - newStartTime
+                        let newDuration = initialEvent.duration + durationOffset
+                        
+                        if newDuration >= snapIncrement {
+                            event.startTime = newStartTime
+                            event.duration = newDuration
+                        }
+                    case .resizingBottom:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newDuration = initialEvent.duration + timeOffset
+                        if newDuration >= snapIncrement {
+                            event.duration = newDuration
+                        }
+                    case .inactive:
+                        break
                     }
                 }
                 .onEnded { gesture in
-                    switch dragState {
-                    case .moving(let translation):
-                        let timeOffset = (translation.height / hourHeight) * 3600
-                        let newStartTime = event.startTime + timeOffset
+                    guard let initialEvent = initialEvent else { return }
+
+                    switch dragType {
+                    case .moving:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newStartTime = initialEvent.startTime + timeOffset
                         event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                    case .resizingTop(let translation):
-                        let timeOffset = (translation.height / hourHeight) * 3600
-                        let newStartTime = event.startTime + timeOffset
+                    case .resizingTop:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newStartTime = initialEvent.startTime + timeOffset
                         let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                        
-                        let durationOffset = event.startTime - snappedStartTime
-                        let newDuration = event.duration + durationOffset
+                        let durationOffset = initialEvent.startTime - snappedStartTime
+                        let newDuration = initialEvent.duration + durationOffset
                         
                         if newDuration >= snapIncrement {
                             event.startTime = snappedStartTime
-                            event.duration = newDuration
+                            event.duration = round(newDuration / snapIncrement) * snapIncrement
+                        } else {
+                            event.startTime = initialEvent.startTime
+                            event.duration = initialEvent.duration
                         }
-                    case .resizingBottom(let translation):
-                        let timeOffset = (translation.height / hourHeight) * 3600
-                        let newDuration = event.duration + timeOffset
+                    case .resizingBottom:
+                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
+                        let newDuration = initialEvent.duration + timeOffset
                         let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
                         
                         if snappedDuration >= snapIncrement {
                             event.duration = snappedDuration
+                        } else {
+                            event.duration = initialEvent.duration
                         }
                     case .inactive:
                         break
                     }
                     
-                    dragState = .inactive
+                    dragType = .inactive
+                    self.initialEvent = nil
                     saveEvents()
                 }
         )
