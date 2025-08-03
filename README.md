@@ -21,7 +21,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Errands (Yellow)
     *   Appointment (Red)
     *   Travel (Cyan)
-    *   Break (Mint)
+    *   Rest (Mint)
     *   Other (Gray)
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
 *   **Visual Snap Grid:** A faint grid of 5-minute increments provides a visual guide for event placement.

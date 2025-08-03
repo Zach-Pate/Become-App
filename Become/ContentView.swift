@@ -4,7 +4,7 @@ import UIKit
 // MARK: - Models
 
 enum EventCategory: String, CaseIterable, Codable {
-    case meeting, meal, exercise, work, personal, family, social, errands, appointment, travel, break, other
+    case meeting, meal, exercise, work, personal, family, social, errands, appointment, travel, rest, other
     
     var color: Color {
         switch self {
@@ -18,7 +18,7 @@ enum EventCategory: String, CaseIterable, Codable {
         case .errands: return .yellow
         case .appointment: return .red
         case .travel: return .cyan
-        case .break: return .mint
+        case .rest: return .mint
         case .other: return .gray
         }
     }
