@@ -86,6 +86,7 @@ struct ContentView: View {
     
     /// The array of events for the day.
     @State private var events: [DayEvent] = []
+    @State private var currentTime: TimeInterval = 0
 
     // MARK: - View Constants
     
@@ -117,13 +118,32 @@ struct ContentView: View {
                         // Add padding to avoid overlapping the time labels.
                         .padding(.leading, 60)
                 }
+                
+                CurrentTimeIndicator(hourHeight: hourHeight)
+                    .offset(y: yOffset(for: currentTime))
             }
         }
         .navigationTitle("Today's Plan")
-        .onAppear(perform: loadEvents)
+        .onAppear(perform: setup)
     }
 
     // MARK: - Helper Functions
+    
+    private func setup() {
+        loadEvents()
+        // Set up a timer to update the current time every minute.
+        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+            updateCurrentTime()
+        }
+        updateCurrentTime()
+    }
+    
+    private func updateCurrentTime() {
+        let now = Date()
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.hour, .minute], from: now)
+        currentTime = TimeInterval(components.hour! * 3600 + components.minute! * 60)
+    }
     
     /// Calculates the vertical offset for an event tile.
     /// - Parameter startTime: The start time of the event.
@@ -352,6 +372,22 @@ struct EventTileView: View {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+struct CurrentTimeIndicator: View {
+    let hourHeight: CGFloat
+    
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(Color.red)
+                .frame(width: 12, height: 12)
+            Rectangle()
+                .fill(Color.red)
+                .frame(height: 2)
+        }
+        .padding(.leading, 54)
     }
 }
 
