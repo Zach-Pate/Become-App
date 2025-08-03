@@ -139,10 +139,12 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isAddingEvent) {
             NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
+                .presentationDetents([.medium])
         }
         .sheet(item: $editingEvent) { event in
             if let index = events.firstIndex(where: { $0.id == event.id }) {
                 EditEventView(event: $events[index], events: $events, saveEvents: { saveEvents(for: selectedDate) })
+                    .presentationDetents([.medium])
             }
         }
     }
@@ -518,7 +520,12 @@ struct NewEventView: View {
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
                     ForEach(EventCategory.allCases, id: \.self) { category in
-                        Text(category.rawValue.capitalized).tag(category)
+                        HStack {
+                            Circle()
+                                .fill(category.color)
+                                .frame(width: 12, height: 12)
+                            Text(category.rawValue.capitalized)
+                        }.tag(category)
                     }
                 }
             }
@@ -571,7 +578,12 @@ struct EditEventView: View {
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
                     ForEach(EventCategory.allCases, id: \.self) { category in
-                        Text(category.rawValue.capitalized).tag(category)
+                        HStack {
+                            Circle()
+                                .fill(category.color)
+                                .frame(width: 12, height: 12)
+                            Text(category.rawValue.capitalized)
+                        }.tag(category)
                     }
                 }
                 Button("Delete Event") {
