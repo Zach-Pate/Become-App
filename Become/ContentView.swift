@@ -237,97 +237,105 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     let tileHeight: CGFloat
     
-    @State private var dragOffset: CGSize = .zero
-    @State private var isDragging = false
+    enum DragState {
+        case inactive, moving(translation: CGSize), resizingTop(translation: CGSize), resizingBottom(translation: CGSize)
+        
+        var translation: CGSize {
+            switch self {
+            case .inactive:
+                return .zero
+            case .moving(let translation):
+                return translation
+            case .resizingTop(let translation):
+                return translation
+            case .resizingBottom(let translation):
+                return translation
+            }
+        }
+        
+        var isDragging: Bool {
+            return self != .inactive
+        }
+    }
+    
+    @State private var dragState: DragState = .inactive
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Top resize handle
-            Rectangle()
-                .fill(Color.white.opacity(0.5))
-                .frame(height: 10)
-                .cornerRadius(2)
-                .padding(.vertical, 4)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                            let newStartTime = event.startTime + timeOffset
-                            let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                            
-                            let durationOffset = event.startTime - snappedStartTime
-                            let newDuration = event.duration + durationOffset
-                            
-                            if newDuration >= snapIncrement {
-                                event.startTime = snappedStartTime
-                                event.duration = newDuration
-                            }
-                        }
-                        .onEnded { _ in
-                            saveEvents()
-                        }
-                )
-
-            // Main content area for moving the tile
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(event.color.opacity(0.8))
-                
-                if tileHeight >= 20 {
-                    Text(event.title)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(8)
-                }
-            }
-            .frame(minHeight: 0, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .offset(y: dragOffset.height)
-            .gesture(
-                DragGesture()
-                    .onChanged { gesture in
-                        if !isDragging {
-                            isDragging = true
-                            feedbackGenerator.impactOccurred()
-                        }
-                        dragOffset = gesture.translation
-                    }
-                    .onEnded { gesture in
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newStartTime = event.startTime + timeOffset
-                        event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                        
-                        isDragging = false
-                        dragOffset = .zero
-                        saveEvents()
-                    }
-            )
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(event.color.opacity(0.8))
             
-            // Bottom resize handle
-            Rectangle()
-                .fill(Color.white.opacity(0.5))
-                .frame(height: 10)
-                .cornerRadius(2)
-                .padding(.vertical, 4)
-                .gesture(
-                    DragGesture()
-                        .onChanged { gesture in
-                            let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                            let newDuration = event.duration + timeOffset
-                            let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
-                            
-                            if snappedDuration >= snapIncrement {
-                                event.duration = snappedDuration
-                            }
-                        }
-                        .onEnded { _ in
-                            saveEvents()
-                        }
-                )
+            if tileHeight >= 20 {
+                Text(event.title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(8)
+            }
         }
         .padding(.trailing, 10)
+        .offset(y: dragState.translation.height)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { gesture in
+                    if !dragState.isDragging {
+                        let initialDragLocation = gesture.startLocation
+                        if initialDragLocation.y < 15 {
+                            dragState = .resizingTop(translation: gesture.translation)
+                        } else if initialDragLocation.y > tileHeight - 15 {
+                            dragState = .resizingBottom(translation: gesture.translation)
+                        } else {
+                            dragState = .moving(translation: gesture.translation)
+                        }
+                        feedbackGenerator.impactOccurred()
+                    } else {
+                        switch dragState {
+                        case .moving:
+                            dragState = .moving(translation: gesture.translation)
+                        case .resizingTop:
+                            dragState = .resizingTop(translation: gesture.translation)
+                        case .resizingBottom:
+                            dragState = .resizingBottom(translation: gesture.translation)
+                        case .inactive:
+                            break
+                        }
+                    }
+                }
+                .onEnded { gesture in
+                    switch dragState {
+                    case .moving(let translation):
+                        let timeOffset = (translation.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
+                        event.startTime = round(newStartTime / snapIncrement) * snapIncrement
+                    case .resizingTop(let translation):
+                        let timeOffset = (translation.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
+                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                        
+                        let durationOffset = event.startTime - snappedStartTime
+                        let newDuration = event.duration + durationOffset
+                        
+                        if newDuration >= snapIncrement {
+                            event.startTime = snappedStartTime
+                            event.duration = newDuration
+                        }
+                    case .resizingBottom(let translation):
+                        let timeOffset = (translation.height / hourHeight) * 3600
+                        let newDuration = event.duration + timeOffset
+                        let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
+                        
+                        if snappedDuration >= snapIncrement {
+                            event.duration = snappedDuration
+                        }
+                    case .inactive:
+                        break
+                    }
+                    
+                    dragState = .inactive
+                    saveEvents()
+                }
+        )
     }
 }
 
