@@ -14,7 +14,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Snapping:** Events snap to 15-minute increments for easy alignment.
 *   **Haptic Feedback:** The app provides haptic feedback when you're moving or resizing an event.
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
-*   **Adaptive Tile Content:** The event title is hidden on smaller tiles to avoid clutter.
+*   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
 *   **Stable Persistence:** Your schedule is reliably saved and restored between sessions.
 

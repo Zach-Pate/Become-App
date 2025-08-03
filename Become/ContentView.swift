@@ -267,12 +267,19 @@ struct EventTileView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(event.color.opacity(0.8))
             
-            if tileHeight >= 20 {
-                Text(event.title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding(8)
+            VStack(alignment: .leading, spacing: 4) {
+                if tileHeight >= 20 {
+                    Text(event.title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+                if tileHeight >= 40 {
+                    Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.9))
+                }
             }
+            .padding(8)
         }
         .padding(.trailing, 10)
         .offset(y: dragState.translation.height)
@@ -336,6 +343,15 @@ struct EventTileView: View {
                     saveEvents()
                 }
         )
+    }
+    
+    private func formattedTime(_ timeInterval: TimeInterval) -> String {
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let date = startOfDay.addingTimeInterval(timeInterval)
+        
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
 }
 
