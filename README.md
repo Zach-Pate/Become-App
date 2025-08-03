@@ -1,3 +1,5 @@
+> **Note:** These files build perfectly. Please be very sparing in editing files to ensure that the build continues to work.
+
 # Become
 
 This is a simple "Hello, World!" SwiftUI app for iOS.
