@@ -8,6 +8,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 
 *   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days.
 *   **Add New Events:** A "+" button on the date selector bar opens a pop-up where you can create new events with a title, start time, end time, and category.
+*   **Edit and Delete Events:** Long-press on an event to open a pop-up where you can edit its details or delete it.
 *   **Event Categories:** Events can be assigned to categories, each with a unique color:
     *   Work (Blue)
     *   Personal (Green)

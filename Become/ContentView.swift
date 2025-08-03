@@ -83,6 +83,7 @@ struct ContentView: View {
     @State private var currentTime: TimeInterval = 0
     @State private var selectedDate: Date = Date()
     @State private var isAddingEvent = false
+    @State private var editingEvent: DayEvent?
 
     // MARK: - View Constants
     
@@ -115,6 +116,9 @@ struct ContentView: View {
                             .frame(height: tileHeight)
                             // Add padding to avoid overlapping the time labels.
                             .padding(.leading, 60)
+                            .onLongPressGesture {
+                                editingEvent = event
+                            }
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -131,6 +135,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isAddingEvent) {
             NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
+        }
+        .sheet(item: $editingEvent) { event in
+            EditEventView(event: $events[events.firstIndex(where: { $0.id == event.id })!], events: $events, saveEvents: { saveEvents(for: selectedDate) })
         }
     }
     
@@ -515,6 +522,68 @@ struct NewEventView: View {
                 
                 let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
                 events.append(newEvent)
+                saveEvents()
+                presentationMode.wrappedValue.dismiss()
+            })
+        }
+    }
+}
+
+struct EditEventView: View {
+    @Binding var event: DayEvent
+    @Binding var events: [DayEvent]
+    let saveEvents: () -> Void
+    
+    @State private var title: String
+    @State private var startTime: Date
+    @State private var endTime: Date
+    @State private var category: EventCategory
+    
+    @Environment(\.presentationMode) var presentationMode
+    
+    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, saveEvents: @escaping () -> Void) {
+        self._event = event
+        self._events = events
+        self.saveEvents = saveEvents
+        
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        _title = State(initialValue: event.wrappedValue.title)
+        _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
+        _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
+        _category = State(initialValue: event.wrappedValue.category)
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                TextField("Title", text: $title)
+                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                Picker("Category", selection: $category) {
+                    ForEach(EventCategory.allCases, id: \.self) { category in
+                        Text(category.rawValue.capitalized).tag(category)
+                    }
+                }
+                Button("Delete Event") {
+                    events.removeAll { $0.id == event.id }
+                    saveEvents()
+                    presentationMode.wrappedValue.dismiss()
+                }
+                .foregroundColor(.red)
+            }
+            .navigationTitle("Edit Event")
+            .navigationBarItems(leading: Button("Cancel") {
+                presentationMode.wrappedValue.dismiss()
+            }, trailing: Button("Save") {
+                let startOfDay = Calendar.current.startOfDay(for: Date())
+                let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                
+                event.title = title
+                event.startTime = startTimeInterval
+                event.duration = endTimeInterval - startTimeInterval
+                event.category = category
+                
                 saveEvents()
                 presentationMode.wrappedValue.dismiss()
             })
