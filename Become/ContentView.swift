@@ -384,7 +384,7 @@ struct CurrentTimeIndicator: View {
     let hourHeight: CGFloat
     
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
             Circle()
                 .fill(Color.red)
                 .frame(width: 12, height: 12)
@@ -392,7 +392,6 @@ struct CurrentTimeIndicator: View {
                 .fill(Color.red)
                 .frame(height: 2)
         }
-        .padding(.leading, 54)
     }
 }
 
