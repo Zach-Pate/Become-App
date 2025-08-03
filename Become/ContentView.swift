@@ -94,8 +94,8 @@ struct ContentView: View {
     private let hourHeight: CGFloat = 80.0
     /// The total number of hours to display in the timeline.
     private let totalHours = 24
-    /// The time increment for snapping events, in seconds (15 minutes).
-    private let snapIncrement: TimeInterval = 15 * 60
+    /// The time increment for snapping events, in seconds (5 minutes).
+    private let snapIncrement: TimeInterval = 5 * 60
 
     // MARK: - Body
     
