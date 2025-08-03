@@ -4,17 +4,21 @@ import UIKit
 // MARK: - Models
 
 enum EventCategory: String, CaseIterable, Codable {
-    case work, personal, health, social, family, errands, focus, other
+    case meeting, meal, exercise, work, personal, family, social, errands, appointment, travel, break, other
     
     var color: Color {
         switch self {
-        case .work: return .blue
-        case .personal: return .green
-        case .health: return .orange
-        case .social: return .purple
+        case .meeting: return .blue
+        case .meal: return .orange
+        case .exercise: return .green
+        case .work: return .indigo
+        case .personal: return .purple
         case .family: return .pink
+        case .social: return .teal
         case .errands: return .yellow
-        case .focus: return .indigo
+        case .appointment: return .red
+        case .travel: return .cyan
+        case .break: return .mint
         case .other: return .gray
         }
     }
@@ -208,11 +212,11 @@ struct ContentView: View {
         }
         // If no saved data is found, load the sample data.
         events = [
-            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, category: .work),
-            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, category: .work),
-            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, category: .personal),
-            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, category: .focus),
-            DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, category: .social)
+            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, category: .meeting),
+            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, category: .meeting),
+            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, category: .meal),
+            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, category: .work),
+            DayEvent(title: "Gym", startTime: 17 * 3600, duration: 3600, category: .exercise)
         ]
     }
 }
