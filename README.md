@@ -7,7 +7,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Features
 
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
-*   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute.
+*   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
     *   Drag the body of an event to move it.
     *   Drag the top or bottom edge of an event to resize it in real-time.
