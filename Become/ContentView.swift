@@ -110,8 +110,8 @@ struct ContentView: View {
                     .frame(height: hourHeight * CGFloat(totalHours))
 
                 // Iterate over the events and create a view for each one.
-                ForEach(events) { event in
-                    EventTileView(event: event)
+                ForEach($events) { $event in
+                    EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: saveEvents)
                         // Position the event tile based on its start time and any drag offset.
                         .offset(y: yOffset(for: event))
                         // Set the height of the tile based on its duration.
@@ -271,7 +271,15 @@ struct HourLinesView: View {
 
 /// A view that displays a single event tile.
 struct EventTileView: View {
-    let event: DayEvent
+    @Binding var event: DayEvent
+    let hourHeight: CGFloat
+    let snapIncrement: TimeInterval
+    let saveEvents: () -> Void
+    
+    @State private var isResizingTop = false
+    @State private var isResizingBottom = false
+    
+    private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -290,6 +298,72 @@ struct EventTileView: View {
                     .foregroundColor(.white.opacity(0.9))
             }
             .padding(8)
+            
+            // Top resize handle
+            VStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(height: 4)
+                    .cornerRadius(2)
+                    .padding(.horizontal, 20)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        if !isResizingTop {
+                            isResizingTop = true
+                            feedbackGenerator.impactOccurred()
+                        }
+                        let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
+                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                        
+                        let durationOffset = event.startTime - snappedStartTime
+                        let newDuration = event.duration + durationOffset
+                        
+                        if newDuration >= snapIncrement {
+                            event.startTime = snappedStartTime
+                            event.duration = newDuration
+                        }
+                    }
+                    .onEnded { _ in
+                        isResizingTop = false
+                        saveEvents()
+                    }
+            )
+            
+            // Bottom resize handle
+            VStack {
+                Spacer()
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(height: 4)
+                    .cornerRadius(2)
+                    .padding(.horizontal, 20)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { gesture in
+                        if !isResizingBottom {
+                            isResizingBottom = true
+                            feedbackGenerator.impactOccurred()
+                        }
+                        let timeOffset = Double(gesture.translation.height / hourHeight) * 3600
+                        let newDuration = event.duration + timeOffset
+                        let snappedDuration = round(newDuration / snapIncrement) * snapIncrement
+                        
+                        if snappedDuration >= snapIncrement {
+                            event.duration = snappedDuration
+                        }
+                    }
+                    .onEnded { _ in
+                        isResizingBottom = false
+                        saveEvents()
+                    }
+            )
         }
         .padding(.trailing, 10)
     }
