@@ -3,6 +3,23 @@ import UIKit
 
 // MARK: - Models
 
+enum EventCategory: String, CaseIterable, Codable {
+    case work, personal, health, social, family, errands, focus, other
+    
+    var color: Color {
+        switch self {
+        case .work: return .blue
+        case .personal: return .green
+        case .health: return .orange
+        case .social: return .purple
+        case .family: return .pink
+        case .errands: return .yellow
+        case .focus: return .indigo
+        case .other: return .gray
+        }
+    }
+}
+
 /// Represents a single event in the daily schedule.
 struct DayEvent: Identifiable, Equatable, Codable {
     /// A unique identifier for the event.
@@ -13,12 +30,16 @@ struct DayEvent: Identifiable, Equatable, Codable {
     var startTime: TimeInterval
     /// The duration of the event, stored in seconds.
     var duration: TimeInterval
-    /// The color used to display the event tile.
-    var color: Color
+    /// The category of the event.
+    var category: EventCategory
+    
+    var color: Color {
+        return category.color
+    }
     
     // Custom coding keys to handle the non-Codable Color type.
     enum CodingKeys: String, CodingKey {
-        case id, title, startTime, duration, color
+        case id, title, startTime, duration, category
     }
     
     // Custom encoding to convert Color to a Codable format.
@@ -28,7 +49,7 @@ struct DayEvent: Identifiable, Equatable, Codable {
         try container.encode(title, forKey: .title)
         try container.encode(startTime, forKey: .startTime)
         try container.encode(duration, forKey: .duration)
-        try container.encode(color.toCodable(), forKey: .color)
+        try container.encode(category, forKey: .category)
     }
     
     // Custom decoding to convert from a Codable format back to Color.
@@ -38,45 +59,18 @@ struct DayEvent: Identifiable, Equatable, Codable {
         title = try container.decode(String.self, forKey: .title)
         startTime = try container.decode(TimeInterval.self, forKey: .startTime)
         duration = try container.decode(TimeInterval.self, forKey: .duration)
-        let codableColor = try container.decode(CodableColor.self, forKey: .color)
-        color = Color(codableColor)
+        category = try container.decode(EventCategory.self, forKey: .category)
     }
     
     // Initializer for creating events without decoding.
-    init(id: UUID = UUID(), title: String, startTime: TimeInterval, duration: TimeInterval, color: Color) {
+    init(id: UUID = UUID(), title: String, startTime: TimeInterval, duration: TimeInterval, category: EventCategory) {
         self.id = id
         self.title = title
         self.startTime = startTime
         self.duration = duration
-        self.color = color
+        self.category = category
     }
 }
-
-/// A Codable representation of a SwiftUI Color.
-struct CodableColor: Codable {
-    var red: CGFloat
-    var green: CGFloat
-    var blue: CGFloat
-    var alpha: CGFloat
-}
-
-// Extension to convert Color to and from the CodableColor representation.
-extension Color {
-    func toCodable() -> CodableColor {
-        let uiColor = UIColor(self)
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        var alpha: CGFloat = 0
-        uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        return CodableColor(red: red, green: green, blue: blue, alpha: alpha)
-    }
-    
-    init(_ codableColor: CodableColor) {
-        self.init(.sRGB, red: Double(codableColor.red), green: Double(codableColor.green), blue: Double(codableColor.blue), opacity: Double(codableColor.alpha))
-    }
-}
-
 
 // MARK: - Main Content View
 
@@ -88,6 +82,7 @@ struct ContentView: View {
     @State private var events: [DayEvent] = []
     @State private var currentTime: TimeInterval = 0
     @State private var selectedDate: Date = Date()
+    @State private var isAddingEvent = false
 
     // MARK: - View Constants
     
@@ -102,7 +97,7 @@ struct ContentView: View {
     
     var body: some View {
         VStack {
-            DateSelectorView(selectedDate: $selectedDate)
+            DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
             ScrollView {
                 // The ZStack layers the event tiles on top of the timeline background.
                 ZStack(alignment: .topLeading) {
@@ -133,6 +128,9 @@ struct ContentView: View {
         .onAppear(perform: setup)
         .onChange(of: selectedDate) { _ in
             loadEvents(for: selectedDate)
+        }
+        .sheet(isPresented: $isAddingEvent) {
+            NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
         }
     }
     
@@ -203,11 +201,11 @@ struct ContentView: View {
         }
         // If no saved data is found, load the sample data.
         events = [
-            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, color: .blue),
-            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, color: .green),
-            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, color: .orange),
-            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, color: .purple),
-            DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, color: .teal)
+            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, category: .work),
+            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, category: .work),
+            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, category: .personal),
+            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, category: .focus),
+            DayEvent(title: "Team Sync", startTime: 16.5 * 3600, duration: 1800, category: .social)
         ]
     }
 }
@@ -216,6 +214,7 @@ struct ContentView: View {
 
 struct DateSelectorView: View {
     @Binding var selectedDate: Date
+    @Binding var isAddingEvent: Bool
     
     private var dates: [Date] {
         var dates: [Date] = []
@@ -229,24 +228,31 @@ struct DateSelectorView: View {
     }
     
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(dates, id: \.self) { date in
-                    VStack {
-                        Text(dayOfWeek(for: date))
-                            .font(.caption)
-                        Text(dayOfMonth(for: date))
-                            .font(.headline)
-                    }
-                    .padding(8)
-                    .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
-                    .cornerRadius(8)
-                    .onTapGesture {
-                        selectedDate = date
+        HStack {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(dates, id: \.self) { date in
+                        VStack {
+                            Text(dayOfWeek(for: date))
+                                .font(.caption)
+                            Text(dayOfMonth(for: date))
+                                .font(.headline)
+                        }
+                        .padding(8)
+                        .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
+                        .cornerRadius(8)
+                        .onTapGesture {
+                            selectedDate = date
+                        }
                     }
                 }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
+            Button(action: { isAddingEvent = true }) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.largeTitle)
+            }
+            .padding(.trailing)
         }
     }
     
@@ -471,6 +477,47 @@ struct CurrentTimeIndicator: View {
             Rectangle()
                 .fill(Color.red)
                 .frame(height: 2)
+        }
+    }
+}
+
+struct NewEventView: View {
+    @Binding var events: [DayEvent]
+    let selectedDate: Date
+    let saveEvents: () -> Void
+    
+    @State private var title = ""
+    @State private var startTime = Date()
+    @State private var endTime = Date()
+    @State private var category: EventCategory = .work
+    
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                TextField("Title", text: $title)
+                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                Picker("Category", selection: $category) {
+                    ForEach(EventCategory.allCases, id: \.self) { category in
+                        Text(category.rawValue.capitalized).tag(category)
+                    }
+                }
+            }
+            .navigationTitle("New Event")
+            .navigationBarItems(leading: Button("Cancel") {
+                presentationMode.wrappedValue.dismiss()
+            }, trailing: Button("Save") {
+                let startOfDay = Calendar.current.startOfDay(for: selectedDate)
+                let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                
+                let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
+                events.append(newEvent)
+                saveEvents()
+                presentationMode.wrappedValue.dismiss()
+            })
         }
     }
 }

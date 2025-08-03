@@ -7,6 +7,16 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Features
 
 *   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days.
+*   **Add New Events:** A "+" button on the date selector bar opens a pop-up where you can create new events with a title, start time, end time, and category.
+*   **Event Categories:** Events can be assigned to categories, each with a unique color:
+    *   Work (Blue)
+    *   Personal (Green)
+    *   Health (Orange)
+    *   Social (Purple)
+    *   Family (Pink)
+    *   Errands (Yellow)
+    *   Focus (Indigo)
+    *   Other (Gray)
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
