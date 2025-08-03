@@ -30,6 +30,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Drag the body of an event to move it.
     *   Drag the top or bottom edge of an event to resize it in real-time.
     *   Long-press an event to edit or delete it.
+*   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter.
 *   **Velocity-Based Snapping:**
     *   Drag slowly for precise, 1-minute adjustments.
     *   Drag quickly to snap to 5-minute increments.
