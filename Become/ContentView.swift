@@ -113,16 +113,13 @@ struct ContentView: View {
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
                         let tileHeight = height(for: event.duration)
-                        EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, tileHeight: tileHeight)
+                        EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, tileHeight: tileHeight, editingEvent: $editingEvent)
                             // Position the event tile based on its start time.
                             .offset(y: yOffset(for: event.startTime))
                             // Set the height of the tile based on its duration.
                             .frame(height: tileHeight)
                             // Add padding to avoid overlapping the time labels.
                             .padding(.leading, 60)
-                            .onLongPressGesture {
-                                editingEvent = event
-                            }
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -141,7 +138,9 @@ struct ContentView: View {
             NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
         }
         .sheet(item: $editingEvent) { event in
-            EditEventView(event: $events[events.firstIndex(where: { $0.id == event.id })!], events: $events, saveEvents: { saveEvents(for: selectedDate) })
+            if let index = events.firstIndex(where: { $0.id == event.id }) {
+                EditEventView(event: $events[index], events: $events, saveEvents: { saveEvents(for: selectedDate) })
+            }
         }
     }
     
@@ -346,6 +345,7 @@ struct EventTileView: View {
     let snapIncrement: TimeInterval
     let saveEvents: () -> Void
     let tileHeight: CGFloat
+    @Binding var editingEvent: DayEvent?
     
     enum DragType {
         case inactive, moving, resizingTop, resizingBottom
@@ -353,6 +353,7 @@ struct EventTileView: View {
     
     @State private var dragType: DragType = .inactive
     @State private var initialEvent: DayEvent?
+    @State private var longPressTimer: Timer?
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
     private let fineSnapIncrement: TimeInterval = 60 // 1 minute
@@ -382,8 +383,13 @@ struct EventTileView: View {
             DragGesture(minimumDistance: 0)
                 .onChanged { gesture in
                     if dragType == .inactive {
-                        feedbackGenerator.impactOccurred()
                         initialEvent = event
+                        
+                        longPressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
+                            editingEvent = event
+                            dragType = .inactive
+                            longPressTimer?.invalidate()
+                        }
                         
                         let location = gesture.startLocation
                         if location.y < 15 {
@@ -393,6 +399,10 @@ struct EventTileView: View {
                         } else {
                             dragType = .moving
                         }
+                    }
+                    
+                    if gesture.translation.height != 0 {
+                        longPressTimer?.invalidate()
                     }
                     
                     guard let initialEvent = initialEvent else { return }
@@ -422,6 +432,7 @@ struct EventTileView: View {
                     }
                 }
                 .onEnded { gesture in
+                    longPressTimer?.invalidate()
                     guard let initialEvent = initialEvent else { return }
                     
                     let velocity = gesture.predictedEndTranslation.height
