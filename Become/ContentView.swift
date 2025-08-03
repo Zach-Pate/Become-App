@@ -293,8 +293,11 @@ struct EventTileView: View {
     /// - Parameter timeInterval: The time interval to format, in seconds from midnight.
     /// - Returns: A formatted time string (e.g., "9:00 AM").
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
-        // Note: This time formatting is simplified and may not be perfect across all timezones.
-        let date = Date(timeIntervalSinceReferenceDate: timeInterval - 3600 * 7) // Adjust for timezone if needed
+        // Get the start of the current day.
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        // Add the time interval to the start of the day to get the correct date.
+        let date = startOfDay.addingTimeInterval(timeInterval)
+        
         let formatter = DateFormatter()
         formatter.timeStyle = .short
         return formatter.string(from: date)
