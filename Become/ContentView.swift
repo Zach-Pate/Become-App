@@ -109,6 +109,9 @@ struct ContentView: View {
                     // The background timeline view.
                     TimelineView()
                         .frame(height: hourHeight * CGFloat(totalHours))
+                    
+                    SnapGridView(hourHeight: hourHeight, snapIncrement: snapIncrement)
+                        .frame(height: hourHeight * CGFloat(totalHours))
 
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
@@ -295,6 +298,23 @@ struct TimelineView: View {
     }
 }
 
+struct SnapGridView: View {
+    let hourHeight: CGFloat
+    let snapIncrement: TimeInterval
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<24 * (60 / 5), id: \.self) { index in
+                Rectangle()
+                    .fill(Color.gray.opacity(0.1))
+                    .frame(height: 1)
+                Spacer()
+            }
+        }
+        .padding(.leading, 60)
+    }
+}
+
 /// A view that displays the time labels for each hour of the day.
 struct TimeLabelsView: View {
     private let hourHeight: CGFloat = 80.0
@@ -352,7 +372,7 @@ struct EventTileView: View {
     }
     
     @State private var dragType: DragType = .inactive
-    @State private var initialEvent: DayEvent?
+    @State private var dragOffset: CGSize = .zero
     @State private var longPressTimer: Timer?
     
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
@@ -379,12 +399,11 @@ struct EventTileView: View {
             .padding(8)
         }
         .padding(.trailing, 10)
+        .offset(y: dragOffset.height)
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { gesture in
                     if dragType == .inactive {
-                        initialEvent = event
-                        
                         longPressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
                             editingEvent = event
                             dragType = .inactive
@@ -401,78 +420,48 @@ struct EventTileView: View {
                         }
                     }
                     
-                    if gesture.translation.height != 0 {
+                    if gesture.translation != .zero {
                         longPressTimer?.invalidate()
                     }
                     
-                    guard let initialEvent = initialEvent else { return }
-
-                    switch dragType {
-                    case .moving:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        event.startTime = initialEvent.startTime + timeOffset
-                    case .resizingTop:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newStartTime = initialEvent.startTime + timeOffset
-                        let durationOffset = initialEvent.startTime - newStartTime
-                        let newDuration = initialEvent.duration + durationOffset
-                        
-                        if newDuration >= snapIncrement {
-                            event.startTime = newStartTime
-                            event.duration = newDuration
-                        }
-                    case .resizingBottom:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newDuration = initialEvent.duration + timeOffset
-                        if newDuration >= snapIncrement {
-                            event.duration = newDuration
-                        }
-                    case .inactive:
-                        break
-                    }
+                    dragOffset = gesture.translation
                 }
                 .onEnded { gesture in
                     longPressTimer?.invalidate()
-                    guard let initialEvent = initialEvent else { return }
                     
                     let velocity = gesture.predictedEndTranslation.height
                     let currentSnap = abs(velocity) < velocityThreshold ? fineSnapIncrement : snapIncrement
 
                     switch dragType {
                     case .moving:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newStartTime = initialEvent.startTime + timeOffset
+                        let timeOffset = (dragOffset.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
                         event.startTime = round(newStartTime / currentSnap) * currentSnap
                     case .resizingTop:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newStartTime = initialEvent.startTime + timeOffset
+                        let timeOffset = (dragOffset.height / hourHeight) * 3600
+                        let newStartTime = event.startTime + timeOffset
                         let snappedStartTime = round(newStartTime / currentSnap) * currentSnap
-                        let durationOffset = initialEvent.startTime - snappedStartTime
-                        let newDuration = initialEvent.duration + durationOffset
+                        let durationOffset = event.startTime - snappedStartTime
+                        let newDuration = event.duration + durationOffset
                         
                         if newDuration >= currentSnap {
                             event.startTime = snappedStartTime
                             event.duration = round(newDuration / currentSnap) * currentSnap
-                        } else {
-                            event.startTime = initialEvent.startTime
-                            event.duration = initialEvent.duration
                         }
                     case .resizingBottom:
-                        let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                        let newDuration = initialEvent.duration + timeOffset
+                        let timeOffset = (dragOffset.height / hourHeight) * 3600
+                        let newDuration = event.duration + timeOffset
                         let snappedDuration = round(newDuration / currentSnap) * currentSnap
                         
                         if snappedDuration >= currentSnap {
                             event.duration = snappedDuration
-                        } else {
-                            event.duration = initialEvent.duration
                         }
                     case .inactive:
                         break
                     }
                     
                     dragType = .inactive
-                    self.initialEvent = nil
+                    dragOffset = .zero
                     saveEvents()
                 }
         )
