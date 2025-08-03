@@ -37,8 +37,8 @@ struct DayEvent: Identifiable, Equatable, Codable {
         title = try container.decode(String.self, forKey: .title)
         startTime = try container.decode(TimeInterval.self, forKey: .startTime)
         duration = try container.decode(TimeInterval.self, forKey: .duration)
-        let codableColor = try container.decode(CodableColor.self, forKey: .color)
-        color = Color(codableColor)
+        let colorName = try container.decode(String.self, forKey: .color)
+        color = Color(colorName)
     }
     
     // Initializer for creating events without decoding.
@@ -51,23 +51,28 @@ struct DayEvent: Identifiable, Equatable, Codable {
     }
 }
 
-/// A Codable representation of a SwiftUI Color.
-struct CodableColor: Codable {
-    var red: Double
-    var green: Double
-    var blue: Double
-    var opacity: Double
-}
-
-// Extension to convert Color to and from the CodableColor representation.
+// Extension to convert Color to and from a simple string representation.
 extension Color {
-    func toCodable() -> CodableColor {
-        let components = self.cgColor?.components ?? [0, 0, 0, 1]
-        return CodableColor(red: components[0], green: components[1], blue: components[2], opacity: components[3])
+    func toCodable() -> String {
+        switch self {
+        case .blue: return "blue"
+        case .green: return "green"
+        case .orange: return "orange"
+        case .purple: return "purple"
+        case .teal: return "teal"
+        default: return "gray"
+        }
     }
     
-    init(_ codableColor: CodableColor) {
-        self.init(.sRGB, red: codableColor.red, green: codableColor.green, blue: codableColor.blue, opacity: codableColor.opacity)
+    init(_ colorName: String) {
+        switch colorName {
+        case "blue": self = .blue
+        case "green": self = .green
+        case "orange": self = .orange
+        case "purple": self = .purple
+        case "teal": self = .teal
+        default: self = .gray
+        }
     }
 }
 
