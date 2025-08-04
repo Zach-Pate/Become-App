@@ -27,8 +27,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Visual Snap Grid:** A faint grid of 5-minute increments provides a visual guide for event placement.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
-    *   Drag the body of an event to move it.
-    *   Drag the top or bottom edge of an event to resize it in real-time.
+    *   Drag an event to move it.
     *   Long-press an event to edit or delete it.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
 *   **Velocity-Based Snapping:**
