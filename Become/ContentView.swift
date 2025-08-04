@@ -400,9 +400,11 @@ struct EventTileView: View {
     
     var body: some View {
         let drag = DragGesture()
-            .onChanged { value in
-                // The view is not actually moved here, but the state is updated.
-                // The offset modifier will use this state to update the view's position.
+            .updating($dragOffset) { value, state, _ in
+                // As the user drags, this closure is called.
+                // We update the `dragOffset` gesture state, which temporarily
+                // changes the visual offset of the event tile.
+                state = value.translation
             }
             .onEnded { value in
                 let timeOffset = (value.translation.height / hourHeight) * 3600
