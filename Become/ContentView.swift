@@ -454,6 +454,52 @@ struct EventTileView: View {
                 }
             }
             .padding(8)
+            
+            // This VStack contains the drag handles for resizing the event.
+            VStack {
+                // Top handle for resizing.
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(height: 5)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let heightChange = value.translation.height
+                                let timeChange = (heightChange / hourHeight) * 3600
+                                
+                                // Update the start time and duration based on the drag.
+                                event.startTime += timeChange
+                                event.duration -= timeChange
+                            }
+                            .onEnded { _ in
+                                // When the drag ends, provide haptic feedback and save the changes.
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                saveEvents()
+                            }
+                    )
+                
+                Spacer()
+                
+                // Bottom handle for resizing.
+                Rectangle()
+                    .fill(Color.white.opacity(0.5))
+                    .frame(height: 5)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let heightChange = value.translation.height
+                                let timeChange = (heightChange / hourHeight) * 3600
+                                
+                                // Update the duration based on the drag.
+                                event.duration += timeChange
+                            }
+                            .onEnded { _ in
+                                // When the drag ends, provide haptic feedback and save the changes.
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                saveEvents()
+                            }
+                    )
+            }
         }
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
