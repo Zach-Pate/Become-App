@@ -88,6 +88,7 @@ struct ContentView: View {
     @State private var selectedDate: Date = Date()
     @State private var isAddingEvent = false
     @State private var editingEvent: DayEvent?
+    @State private var timer: Timer?
 
     // MARK: - View Constants
     
@@ -130,6 +131,7 @@ struct ContentView: View {
         }
         .navigationTitle(dateFormatter.string(from: selectedDate))
         .onAppear(perform: setup)
+        .onDisappear(perform: cancelTimer)
         .onChange(of: selectedDate) {
             loadEvents(for: $0)
         }
@@ -139,7 +141,7 @@ struct ContentView: View {
         }
         .sheet(item: $editingEvent) { event in
             if let index = events.firstIndex(where: { $0.id == event.id }) {
-                EditEventView(event: $events[index], events: $events, saveEvents: { saveEvents(for: selectedDate) })
+                EditEventView(event: $events[index], events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
                     .presentationDetents([.medium])
             }
         }
@@ -156,10 +158,15 @@ struct ContentView: View {
     private func setup() {
         loadEvents(for: selectedDate)
         // Set up a timer to update the current time every minute.
-        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             updateCurrentTime()
         }
         updateCurrentTime()
+    }
+    
+    private func cancelTimer() {
+        timer?.invalidate()
+        timer = nil
     }
     
     private func updateCurrentTime() {
@@ -201,23 +208,24 @@ struct ContentView: View {
         }
     }
     
-    /// Loads events from UserDefaults, or uses sample data if none are found.
+    /// Loads events from UserDefaults. If no data is found, it initializes an empty array.
     private func loadEvents(for date: Date) {
         let key = dateKey(for: date)
-        if let data = UserDefaults.standard.data(forKey: key) {
-            if let decoded = try? JSONDecoder().decode([DayEvent].self, from: data) {
-                events = decoded
-                return
-            }
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            // No data found for this date, so we'll start with an empty schedule.
+            events = []
+            return
         }
-        // If no saved data is found, load the sample data.
-        events = [
-            DayEvent(title: "Morning Standup", startTime: 9 * 3600, duration: 1800, category: .meeting),
-            DayEvent(title: "Design Review", startTime: 11 * 3600, duration: 1800, category: .meeting),
-            DayEvent(title: "Lunch", startTime: 12.5 * 3600, duration: 3600, category: .meal),
-            DayEvent(title: "Focused Work", startTime: 14 * 3600, duration: 7200, category: .work),
-            DayEvent(title: "Gym", startTime: 17 * 3600, duration: 3600, category: .exercise)
-        ]
+        
+        do {
+            // Attempt to decode the saved events from UserDefaults.
+            let decodedEvents = try JSONDecoder().decode([DayEvent].self, from: data)
+            events = decodedEvents
+        } catch {
+            // If decoding fails, log the error and start with an empty schedule to prevent data loss.
+            print("Failed to decode events for key '\(key)': \(error)")
+            events = []
+        }
     }
 }
 
@@ -230,8 +238,9 @@ struct DateSelectorView: View {
     private var dates: [Date] {
         var dates: [Date] = []
         let calendar = Calendar.current
+        // Create a range of dates centered around the selected date.
         for i in -30...30 {
-            if let date = calendar.date(byAdding: .day, value: i, to: Date()) {
+            if let date = calendar.date(byAdding: .day, value: i, to: selectedDate) {
                 dates.append(date)
             }
         }
@@ -263,6 +272,12 @@ struct DateSelectorView: View {
                 }
                 .onAppear {
                     proxy.scrollTo(selectedDate, anchor: .center)
+                }
+                // Add this modifier to scroll to the selected date whenever it changes.
+                .onChange(of: selectedDate) {
+                    withAnimation {
+                        proxy.scrollTo(selectedDate, anchor: .center)
+                    }
                 }
             }
             Button(action: { isAddingEvent = true }) {
@@ -384,25 +399,43 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        let longPressGesture = LongPressGesture(minimumDuration: 0.5)
+        let drag = DragGesture()
+            .onChanged { value in
+                // The view is not actually moved here, but the state is updated.
+                // The offset modifier will use this state to update the view's position.
+            }
+            .onEnded { value in
+                let timeOffset = (value.translation.height / hourHeight) * 3600
+                let newStartTime = event.startTime + timeOffset
+                
+                // Check the velocity of the drag to determine if we should snap.
+                let velocity = value.predictedEndTranslation.height
+                if abs(velocity) > 500 { // Threshold for a "fast" drag
+                    // Snap to the nearest 5-minute increment.
+                    let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                    event.startTime = snappedStartTime
+                } else {
+                    // For a slow drag, allow for 1-minute precision.
+                    let preciseStartTime = round(newStartTime / 60) * 60
+                    event.startTime = preciseStartTime
+                }
+                
+                // Provide haptic feedback when the event is moved.
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                
+                saveEvents()
+            }
+
+        let longPress = LongPressGesture(minimumDuration: 0.5)
             .onEnded { _ in
                 editingEvent = event
             }
-        
-        let dragGesture = DragGesture()
-            .updating($dragOffset) { value, state, _ in
-                state = value.translation
-            }
-            .onEnded { gesture in
-                let timeOffset = (gesture.translation.height / hourHeight) * 3600
-                let newStartTime = event.startTime + timeOffset
-                event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                saveEvents()
-            }
-        
-        let combined = longPressGesture.sequenced(before: dragGesture)
 
-        ZStack {
+        // By combining the long-press and drag gestures, we allow the user to either
+        // long-press to edit or drag to move the event.
+        let combined = longPress.sequenced(before: drag)
+
+        return ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .fill(event.color.opacity(0.8))
             
@@ -508,6 +541,7 @@ struct NewEventView: View {
 struct EditEventView: View {
     @Binding var event: DayEvent
     @Binding var events: [DayEvent]
+    let selectedDate: Date
     let saveEvents: () -> Void
     
     @State private var title: String
@@ -517,12 +551,13 @@ struct EditEventView: View {
     
     @Environment(\.dismiss) var dismiss
     
-    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, saveEvents: @escaping () -> Void) {
+    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping () -> Void) {
         self._event = event
         self._events = events
+        self.selectedDate = selectedDate
         self.saveEvents = saveEvents
         
-        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let startOfDay = Calendar.current.startOfDay(for: selectedDate)
         _title = State(initialValue: event.wrappedValue.title)
         _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
         _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
@@ -562,7 +597,7 @@ struct EditEventView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard endTime > startTime else { return }
-                        let startOfDay = Calendar.current.startOfDay(for: Date())
+                        let startOfDay = Calendar.current.startOfDay(for: selectedDate)
                         let startTimeInterval = startTime.timeIntervalSince(startOfDay)
                         let endTimeInterval = endTime.timeIntervalSince(startOfDay)
                         
