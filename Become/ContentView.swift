@@ -41,7 +41,7 @@ struct DayEvent: Identifiable, Equatable, Codable {
         return category.color
     }
     
-    // Custom coding keys to handle the non-Codable Color type.
+    // Coding keys used for encoding/decoding properties (Color is excluded as it's a computed property).
     enum CodingKeys: String, CodingKey {
         case id, title, startTime, duration, category
     }
@@ -116,6 +116,9 @@ struct ContentView: View {
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
                         EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                            .offset(y: yOffset(for: event.startTime))
+                            .frame(height: height(for: event.duration))
+                            .padding(.leading, 60)
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -304,12 +307,19 @@ struct SnapGridView: View {
     let snapIncrement: TimeInterval
     
     var body: some View {
+        let fiveMinuteIncrements = Int(3600 / snapIncrement)
+        let totalLines = 24 * fiveMinuteIncrements
+        let lineHeight = hourHeight / CGFloat(fiveMinuteIncrements)
+
         VStack(spacing: 0) {
-            ForEach(0..<24 * (60 / 5), id: \.self) { index in
-                Rectangle()
-                    .fill(Color.gray.opacity(0.1))
-                    .frame(height: 1)
-                Spacer()
+            ForEach(0..<totalLines, id: \.self) { _ in
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.1))
+                        .frame(height: 1)
+                    Spacer(minLength: 0)
+                }
+                .frame(height: lineHeight)
             }
         }
         .padding(.leading, 60)
@@ -337,7 +347,7 @@ struct TimeLabelsView: View {
     /// - Returns: A formatted time string.
     private func timeString(for hour: Int) -> String {
         let ampm = hour < 12 ? "AM" : "PM"
-        let displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour)
+        let displayHour = hour % 12 == 0 ? 12 : hour % 12
         return "\(displayHour) \(ampm)"
     }
 }
@@ -367,7 +377,11 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
     
-    @State private var dragOffset: CGSize = .zero
+    @GestureState private var dragOffset: CGSize = .zero
+    
+    private var tileHeight: CGFloat {
+        CGFloat(event.duration / 3600) * hourHeight
+    }
     
     var body: some View {
         let longPressGesture = LongPressGesture(minimumDuration: 0.5)
@@ -376,14 +390,13 @@ struct EventTileView: View {
             }
         
         let dragGesture = DragGesture()
-            .onChanged { value in
-                dragOffset = value.translation
+            .updating($dragOffset) { value, state, _ in
+                state = value.translation
             }
             .onEnded { gesture in
                 let timeOffset = (gesture.translation.height / hourHeight) * 3600
                 let newStartTime = event.startTime + timeOffset
                 event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                dragOffset = .zero
                 saveEvents()
             }
         
@@ -394,12 +407,12 @@ struct EventTileView: View {
                 .fill(event.color.opacity(0.8))
             
             VStack(alignment: .leading, spacing: 4) {
-                if height(for: event.duration) >= 20 {
+                if tileHeight >= 20 {
                     Text(event.title)
                         .font(.headline)
                         .foregroundColor(.white)
                 }
-                if height(for: event.duration) >= 40 {
+                if tileHeight >= 40 {
                     Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.9))
@@ -410,11 +423,6 @@ struct EventTileView: View {
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
         .gesture(combined)
-    }
-    
-    private func height(for duration: TimeInterval) -> CGFloat {
-        let hours = duration / 3600
-        return CGFloat(hours) * hourHeight
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
@@ -452,7 +460,7 @@ struct NewEventView: View {
     @State private var endTime = Date()
     @State private var category: EventCategory = .work
     
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
@@ -472,18 +480,27 @@ struct NewEventView: View {
                 }
             }
             .navigationTitle("New Event")
-            .navigationBarItems(leading: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            }, trailing: Button("Save") {
-                let startOfDay = Calendar.current.startOfDay(for: selectedDate)
-                let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                
-                let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
-                events.append(newEvent)
-                saveEvents()
-                presentationMode.wrappedValue.dismiss()
-            })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard endTime > startTime else { return }
+                        let startOfDay = Calendar.current.startOfDay(for: selectedDate)
+                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                        
+                        let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
+                        events.append(newEvent)
+                        saveEvents()
+                        dismiss()
+                    }
+                    .disabled(endTime <= startTime)
+                }
+            }
         }
     }
 }
@@ -498,7 +515,7 @@ struct EditEventView: View {
     @State private var endTime: Date
     @State private var category: EventCategory
     
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
     
     init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, saveEvents: @escaping () -> Void) {
         self._event = event
@@ -531,33 +548,43 @@ struct EditEventView: View {
                 Button("Delete Event") {
                     events.removeAll { $0.id == event.id }
                     saveEvents()
-                    presentationMode.wrappedValue.dismiss()
+                    dismiss()
                 }
                 .foregroundColor(.red)
             }
             .navigationTitle("Edit Event")
-            .navigationBarItems(leading: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            }, trailing: Button("Save") {
-                let startOfDay = Calendar.current.startOfDay(for: Date())
-                let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                
-                event.title = title
-                event.startTime = startTimeInterval
-                event.duration = endTimeInterval - startTimeInterval
-                event.category = category
-                
-                saveEvents()
-                presentationMode.wrappedValue.dismiss()
-            })
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard endTime > startTime else { return }
+                        let startOfDay = Calendar.current.startOfDay(for: Date())
+                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                        
+                        event.title = title
+                        event.startTime = startTimeInterval
+                        event.duration = endTimeInterval - startTimeInterval
+                        event.category = category
+                        
+                        saveEvents()
+                        dismiss()
+                    }
+                    .disabled(endTime <= startTime)
+                }
+            }
         }
     }
 }
 
-
-#Preview {
-    NavigationView {
-        ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            ContentView()
+        }
     }
 }

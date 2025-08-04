@@ -39,6 +39,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
 *   **Stable Persistence:** Your schedule is reliably saved and restored between sessions on a per-day basis.
+*   **Input Validation:** The app prevents the creation of events with a zero or negative duration.
 
 ## Getting Started
 
