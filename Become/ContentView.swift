@@ -116,6 +116,9 @@ struct ContentView: View {
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
                         EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                            .offset(y: yOffset(for: event.startTime))
+                            .frame(height: height(for: event.duration))
+                            .padding(.leading, 60)
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
@@ -367,7 +370,11 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
     
-    @State private var dragOffset: CGSize = .zero
+    @GestureState private var dragOffset: CGSize = .zero
+    
+    private var tileHeight: CGFloat {
+        CGFloat(event.duration / 3600) * hourHeight
+    }
     
     var body: some View {
         let longPressGesture = LongPressGesture(minimumDuration: 0.5)
@@ -376,14 +383,13 @@ struct EventTileView: View {
             }
         
         let dragGesture = DragGesture()
-            .onChanged { value in
-                dragOffset = value.translation
+            .updating($dragOffset) { value, state, _ in
+                state = value.translation
             }
             .onEnded { gesture in
                 let timeOffset = (gesture.translation.height / hourHeight) * 3600
                 let newStartTime = event.startTime + timeOffset
                 event.startTime = round(newStartTime / snapIncrement) * snapIncrement
-                dragOffset = .zero
                 saveEvents()
             }
         
@@ -394,12 +400,12 @@ struct EventTileView: View {
                 .fill(event.color.opacity(0.8))
             
             VStack(alignment: .leading, spacing: 4) {
-                if height(for: event.duration) >= 20 {
+                if tileHeight >= 20 {
                     Text(event.title)
                         .font(.headline)
                         .foregroundColor(.white)
                 }
-                if height(for: event.duration) >= 40 {
+                if tileHeight >= 40 {
                     Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.9))
@@ -410,11 +416,6 @@ struct EventTileView: View {
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
         .gesture(combined)
-    }
-    
-    private func height(for duration: TimeInterval) -> CGFloat {
-        let hours = duration / 3600
-        return CGFloat(hours) * hourHeight
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
