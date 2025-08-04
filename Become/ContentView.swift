@@ -116,6 +116,9 @@ struct ContentView: View {
                     // Iterate over the events and create a view for each one.
                     ForEach($events) { $event in
                         EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                            .offset(y: yOffset(for: event.startTime))
+                            .frame(height: height(for: event.duration))
+                            .padding(.leading, 60)
                     }
                     
                     if Calendar.current.isDateInToday(selectedDate) {
