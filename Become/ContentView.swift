@@ -509,13 +509,12 @@ struct TimeLabelsView: View {
     private let totalHours = 24
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .top) {
             ForEach(0..<totalHours, id: \.self) { hour in
                 Text(timeString(for: hour))
                     .font(.caption)
-                    .frame(height: hourHeight, alignment: .top)
                     .foregroundColor(.secondary)
-                    .id(hour)
+                    .position(x: 30, y: CGFloat(hour) * hourHeight)
             }
         }
     }
@@ -555,39 +554,45 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
     
-    @GestureState private var dragOffset: CGSize = .zero
-    @State private var isLongPressing = false
+    @State private var currentDragOffset: CGSize = .zero
+    @GestureState private var isLongPressingGestureState: Bool = false
     
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
     }
     
+    private var draggedStartTime: TimeInterval {
+        let timeOffset = (currentDragOffset.height / hourHeight) * 3600
+        let newStartTime = event.startTime + timeOffset
+        return round(newStartTime / snapIncrement) * snapIncrement
+    }
+    
+    private var draggedEndTime: TimeInterval {
+        draggedStartTime + event.duration
+    }
+    
     var body: some View {
+        let longPress = LongPressGesture(minimumDuration: 0.5)
+            .updating($isLongPressingGestureState) { value, state, _ in
+                state = value
+            }
+            .onEnded { _ in
+                editingEvent = event
+            }
+
         let drag = DragGesture()
-            .updating($dragOffset) { value, state, _ in
-                if !isLongPressing {
-                    state = value.translation
+            .onChanged { value in
+                if !isLongPressingGestureState {
+                    self.currentDragOffset = value.translation
                 }
             }
             .onEnded { value in
-                if !isLongPressing {
-                    let timeOffset = (value.translation.height / hourHeight) * 3600
-                    let newStartTime = event.startTime + timeOffset
-                    
-                    // Always snap to the nearest 5-minute increment.
-                    let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                    event.startTime = snappedStartTime
-                    
+                if !isLongPressingGestureState {
+                    event.startTime = draggedStartTime
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     saveEvents()
                 }
-                isLongPressing = false
-            }
-
-        let longPress = LongPressGesture(minimumDuration: 0.5)
-            .onEnded { _ in
-                isLongPressing = true
-                editingEvent = event
+                self.currentDragOffset = .zero
             }
 
         let combined = longPress.simultaneously(with: drag)
@@ -603,7 +608,7 @@ struct EventTileView: View {
                         .foregroundColor(.white)
                 }
                 if tileHeight >= 40 {
-                    Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
+                    Text("\(formattedTime(draggedStartTime)) - \(formattedTime(draggedEndTime))")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.9))
                 }
@@ -664,7 +669,7 @@ struct EventTileView: View {
         }
         .clipped()
         .padding(.trailing, 10)
-        .offset(y: dragOffset.height)
+        .offset(y: currentDragOffset.height)
         .gesture(combined)
     }
     

@@ -27,11 +27,11 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Travel (Cyan)
     *   Work (Indigo)
     *   Other (Gray)
-*   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule.
+*   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule. The time labels are now perfectly centered on their corresponding hour markers.
 *   **Visual Snap Grid:** A faint grid of 10-minute increments provides a visual guide for event placement.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
-    *   Drag an event vertically to move it to a different time.
+    *   Drag an event vertically to move it to a different time. The time display on the tile updates in real-time as you drag.
     *   Drag the top or bottom handles of an event to adjust its duration.
     *   Long-press an event to edit or delete it.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
@@ -66,6 +66,8 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Fixed a bug that prevented events from being created on dates other than the currently selected date.
     *   Fixed a bug where events created on a different day would be displayed at the wrong time.
     *   Fixed an issue where event tiles for short events would overflow their boundaries.
+    *   Event tiles now show the updated time in real-time as they are being dragged.
+    *   Time labels in the main schedule view are now perfectly centered on their corresponding hour lines.
 
 ## Getting Started
 
