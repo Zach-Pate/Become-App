@@ -28,21 +28,22 @@ enum Weekday: Int, CaseIterable, Codable, Identifiable {
 }
 
 enum EventCategory: String, CaseIterable, Codable {
-    case meeting, meal, exercise, work, personal, family, social, errands, appointment, travel, rest, other
+    case appointment, errands, exercise, family, meal, meeting, personal, rest, social, study, travel, work, other
     
     var color: Color {
         switch self {
-        case .meeting: return .blue
-        case .meal: return .orange
-        case .exercise: return .green
-        case .work: return .indigo
-        case .personal: return .purple
-        case .family: return .pink
-        case .social: return .teal
-        case .errands: return .yellow
         case .appointment: return .red
-        case .travel: return .cyan
+        case .errands: return .yellow
+        case .exercise: return .green
+        case .family: return .pink
+        case .meal: return .orange
+        case .meeting: return .blue
+        case .personal: return .purple
         case .rest: return .mint
+        case .social: return .teal
+        case .study: return .brown
+        case .travel: return .cyan
+        case .work: return .indigo
         case .other: return .gray
         }
     }
@@ -641,7 +642,7 @@ struct NewEventView: View {
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
-                    ForEach(EventCategory.allCases, id: \.self) { category in
+                    ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
                         HStack {
                             Circle()
                                 .fill(category.color)
@@ -801,7 +802,7 @@ struct EditEventView: View {
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
-                    ForEach(EventCategory.allCases, id: \.self) { category in
+                    ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
                         HStack {
                             Circle()
                                 .fill(category.color)
