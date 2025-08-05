@@ -292,11 +292,26 @@ struct ContentView: View {
     /// Saves the current events to UserDefaults.
     private func saveEvents(for date: Date) {
         let key = dateKey(for: date)
-        let singleDayEvents = events.filter { $0.repeatOption == .none }
         
+        // Separate single-day and repeating events.
+        let singleDayEvents = events.filter { $0.repeatOption == .none }
+        let repeatingEvents = events.filter { $0.repeatOption != .none }
+        
+        // Save single-day events to their specific date key.
         if let encoded = try? JSONEncoder().encode(singleDayEvents) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
+        
+        // Update the master list of repeating events.
+        var masterRepeatingEvents = loadMasterRepeatingEvents()
+        for event in repeatingEvents {
+            if let index = masterRepeatingEvents.firstIndex(where: { $0.id == event.id }) {
+                masterRepeatingEvents[index] = event
+            } else {
+                masterRepeatingEvents.append(event)
+            }
+        }
+        saveMasterRepeatingEvents(masterRepeatingEvents)
     }
     
     /// Loads events from UserDefaults. If no data is found, it initializes an empty array.
@@ -729,9 +744,8 @@ struct NewEventView: View {
                             repeatOption: finalRepeatOption
                         )
                         
-                        save(event: newEvent)
-                        
                         // Reload events for the currently selected date to reflect changes.
+                        events.append(newEvent)
                         saveEvents(selectedDate)
                         
                         dismiss()
@@ -743,48 +757,6 @@ struct NewEventView: View {
                 // When the view appears, set the date picker to the selected date.
                 eventDate = selectedDate
             }
-        }
-    }
-    
-    private func save(event: DayEvent) {
-        if event.repeatOption == .none {
-            var dayEvents = loadEventsForDate(eventDate)
-            dayEvents.append(event)
-            saveEventsForDate(dayEvents, for: eventDate)
-        } else {
-            var repeatingEvents = loadMasterRepeatingEvents()
-            repeatingEvents.append(event)
-            saveMasterRepeatingEvents(repeatingEvents)
-        }
-    }
-    
-    private func loadEventsForDate(_ date: Date) -> [DayEvent] {
-        let key = dateKey(for: date)
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
-            return []
-        }
-        return decodedEvents
-    }
-
-    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
-        let key = dateKey(for: date)
-        if let encoded = try? JSONEncoder().encode(events) {
-            UserDefaults.standard.set(encoded, forKey: key)
-        }
-    }
-    
-    private func loadMasterRepeatingEvents() -> [DayEvent] {
-        guard let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents"),
-              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
-            return []
-        }
-        return decodedEvents
-    }
-    
-    private func saveMasterRepeatingEvents(_ events: [DayEvent]) {
-        if let encoded = try? JSONEncoder().encode(events) {
-            UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
     }
 
