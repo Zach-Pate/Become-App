@@ -845,10 +845,14 @@ struct EditEventView: View {
                 }
                 
                 Button("Delete Event") {
-                    // For now, we'll just delete the single instance.
-                    // A more robust implementation would ask whether to delete the
-                    // entire series if it's a repeating event.
-                    events.removeAll { $0.id == event.id }
+                    if let seriesId = event.seriesId {
+                        // If the event is part of a series, delete the master event.
+                        removeMasterRepeatingEvent(with: seriesId)
+                    } else {
+                        // Otherwise, just delete the single instance.
+                        events.removeAll { $0.id == event.id }
+                    }
+                    
                     saveEvents(selectedDate)
                     dismiss()
                 }
@@ -888,6 +892,26 @@ struct EditEventView: View {
                     .disabled(endTime <= startTime)
                 }
             }
+        }
+    }
+    
+    private func removeMasterRepeatingEvent(with seriesId: UUID) {
+        var repeatingEvents = loadMasterRepeatingEvents()
+        repeatingEvents.removeAll { $0.seriesId == seriesId }
+        saveMasterRepeatingEvents(repeatingEvents)
+    }
+    
+    private func loadMasterRepeatingEvents() -> [DayEvent] {
+        guard let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents"),
+              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+            return []
+        }
+        return decodedEvents
+    }
+    
+    private func saveMasterRepeatingEvents(_ events: [DayEvent]) {
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
     }
 }
