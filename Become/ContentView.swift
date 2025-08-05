@@ -228,10 +228,10 @@ struct ContentView: View {
             NewEventView(selectedDate: selectedDate)
                 .presentationDetents([.medium])
         }
-        .sheet(item: $editingEvent) { event in
+        .sheet(item: $editingEvent, onDismiss: {
+            loadEvents(for: selectedDate)
+        }) { event in
             if let index = events.firstIndex(where: { $0.id == event.id }) {
-                // The saveEvents closure from EditEventView passes a Date argument that is not needed here,
-                // so it is ignored with `_ in`.
                 EditEventView(event: $events[index], events: $events, selectedDate: selectedDate, saveEvents: { _ in saveEvents(for: selectedDate) })
                     .presentationDetents([.medium])
             }
@@ -979,7 +979,6 @@ struct EditEventView: View {
         if let index = repeatingEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
             repeatingEvents[index].exceptionDates.insert(selectedDate)
             saveMasterRepeatingEvents(repeatingEvents)
-            saveEvents(selectedDate)
         }
     }
     
