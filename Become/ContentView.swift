@@ -878,7 +878,11 @@ struct EditEventView: View {
             .alert("Delete Event", isPresented: $showDeleteAlert) {
                 deleteAlertButtons
             } message: {
-                Text("Do you want to delete only this event or all future occurrences?")
+                if event.repeatOption != .none {
+                    Text("Do you want to delete only this event or all future occurrences?")
+                } else {
+                    Text("Are you sure you want to delete this event?")
+                }
             }
         }
     }
@@ -955,15 +959,22 @@ struct EditEventView: View {
 
     private var deleteAlertButtons: some View {
         Group {
-            Button("Delete This Event Only", role: .destructive) {
-                addExceptionDate()
-                dismiss()
-            }
-            Button("Delete All Future Events", role: .destructive) {
-                if let seriesId = event.seriesId {
-                    removeMasterRepeatingEvent(with: seriesId)
+            if event.repeatOption != .none {
+                Button("Delete This Event Only", role: .destructive) {
+                    addExceptionDate()
+                    dismiss()
                 }
-                dismiss()
+                Button("Delete All Future Events", role: .destructive) {
+                    if let seriesId = event.seriesId {
+                        removeMasterRepeatingEvent(with: seriesId)
+                    }
+                    dismiss()
+                }
+            } else {
+                Button("Delete", role: .destructive) {
+                    removeSingleEvent()
+                    dismiss()
+                }
             }
             Button("Cancel", role: .cancel) { }
         }
@@ -982,6 +993,11 @@ struct EditEventView: View {
         var repeatingEvents = loadMasterRepeatingEvents()
         repeatingEvents.removeAll { $0.seriesId == seriesId }
         saveMasterRepeatingEvents(repeatingEvents)
+    }
+    
+    private func removeSingleEvent() {
+        events.removeAll { $0.id == event.id }
+        saveEvents(selectedDate)
     }
     
     private func loadMasterRepeatingEvents() -> [DayEvent] {
