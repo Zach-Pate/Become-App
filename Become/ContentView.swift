@@ -283,14 +283,23 @@ struct ContentView: View {
         let hours = duration / 3600
         return CGFloat(hours) * hourHeight
     }
-    
-    // MARK: - Data Persistence
-    
-    private func dateKey(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+}
+
+// MARK: - Data Persistence
+
+private func dateKey(for date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
+}
+
+private func loadMasterRepeatingEvents() -> [DayEvent] {
+    guard let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents"),
+          let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+        return []
     }
+    return decodedEvents
+}
     
     /// Saves the current events to UserDefaults.
     private func saveEvents(for date: Date) {
