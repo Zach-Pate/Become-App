@@ -688,29 +688,21 @@ struct NewEventView: View {
     
     @State private var title = ""
     @State private var eventDate = Date()
-    @State private var startTimeString = ""
-    @State private var endTimeString = ""
+    @State private var startTime = Date()
+    @State private var endTime = Date()
     @State private var category: EventCategory = .work
     @State private var repeatOption: RepeatOption = .none
     @State private var selectedWeekdays: Set<Weekday> = []
     
     @Environment(\.dismiss) var dismiss
     
-    private var startTime: Date {
-        dateFromString(startTimeString, on: eventDate) ?? eventDate
-    }
-    
-    private var endTime: Date {
-        dateFromString(endTimeString, on: eventDate) ?? eventDate
-    }
-    
     var body: some View {
         NavigationView {
             Form {
                 TextField("Title", text: $title)
                 DatePicker("Date", selection: $eventDate, displayedComponents: .date)
-                TextField("Start Time", text: $startTimeString)
-                TextField("End Time", text: $endTimeString)
+                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
                     ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
                         HStack {
@@ -775,20 +767,6 @@ struct NewEventView: View {
         }
     }
 
-    private func dateFromString(_ timeString: String, on date: Date) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        guard let timeDate = formatter.date(from: timeString) else { return nil }
-
-        let calendar = Calendar.current
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: timeDate)
-        
-        return calendar.date(bySettingHour: timeComponents.hour ?? 0,
-                             minute: timeComponents.minute ?? 0,
-                             second: 0,
-                             of: date)
-    }
-        
     private func save(event: DayEvent) {
         if event.repeatOption == .none {
             var dayEvents = loadEventsForDate(eventDate)
@@ -846,22 +824,14 @@ struct EditEventView: View {
     
     @State private var title: String
     @State private var eventDate: Date
-    @State private var startTimeString: String
-    @State private var endTimeString: String
+    @State private var startTime: Date
+    @State private var endTime: Date
     @State private var category: EventCategory
     @State private var repeatOption: RepeatOption
     @State private var selectedWeekdays: Set<Weekday>
     @State private var showDeleteAlert = false
     
     @Environment(\.dismiss) var dismiss
-    
-    private var startTime: Date {
-        dateFromString(startTimeString, on: eventDate) ?? eventDate
-    }
-    
-    private var endTime: Date {
-        dateFromString(endTimeString, on: eventDate) ?? eventDate
-    }
     
     init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping (Date) -> Void) {
         self._event = event
@@ -872,8 +842,8 @@ struct EditEventView: View {
         let startOfDay = Calendar.current.startOfDay(for: selectedDate)
         _title = State(initialValue: event.wrappedValue.title)
         _eventDate = State(initialValue: selectedDate)
-        _startTimeString = State(initialValue: stringFromDate(startOfDay.addingTimeInterval(event.wrappedValue.startTime)))
-        _endTimeString = State(initialValue: stringFromDate(startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration)))
+        _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
+        _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
         _category = State(initialValue: event.wrappedValue.category)
         _repeatOption = State(initialValue: event.wrappedValue.repeatOption)
         
@@ -915,8 +885,8 @@ struct EditEventView: View {
         Form {
             TextField("Title", text: $title)
             DatePicker("Date", selection: $eventDate, displayedComponents: .date)
-            TextField("Start Time", text: $startTimeString)
-            TextField("End Time", text: $endTimeString)
+            DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+            DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
             categoryPicker
             repeatPicker
             
@@ -1004,20 +974,6 @@ struct EditEventView: View {
         }
     }
     
-    private func dateFromString(_ timeString: String, on date: Date) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        guard let timeDate = formatter.date(from: timeString) else { return nil }
-
-        let calendar = Calendar.current
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: timeDate)
-        
-        return calendar.date(bySettingHour: timeComponents.hour ?? 0,
-                             minute: timeComponents.minute ?? 0,
-                             second: 0,
-                             of: date)
-    }
-    
     private func addExceptionDate() {
         var repeatingEvents = loadMasterRepeatingEvents()
         if let index = repeatingEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
@@ -1050,12 +1006,6 @@ struct EditEventView: View {
             UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
     }
-}
-
-private func stringFromDate(_ date: Date) -> String {
-    let formatter = DateFormatter()
-    formatter.dateFormat = "h:mm a"
-    return formatter.string(from: date)
 }
 
 struct ContentView_Previews: PreviewProvider {
