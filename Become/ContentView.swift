@@ -617,7 +617,7 @@ struct EventTileView: View {
             VStack {
                 // Top handle for resizing.
                 Rectangle()
-                    .fill(Color.white.opacity(0.5))
+                    .fill(Color.clear)
                     .frame(height: 5)
                     .gesture(
                         DragGesture()
@@ -640,7 +640,7 @@ struct EventTileView: View {
                 
                 // Bottom handle for resizing.
                 Rectangle()
-                    .fill(Color.white.opacity(0.5))
+                    .fill(Color.clear)
                     .frame(height: 5)
                     .gesture(
                         DragGesture()
