@@ -933,7 +933,9 @@ struct EditEventView: View {
                 dismiss()
             }
             Button("Delete All Future Events", role: .destructive) {
-                removeMasterRepeatingEvent(with: event.seriesId)
+                if let seriesId = event.seriesId {
+                    removeMasterRepeatingEvent(with: seriesId)
+                }
                 dismiss()
             }
             Button("Cancel", role: .cancel) { }

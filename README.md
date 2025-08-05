@@ -53,6 +53,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Corrected closure calls in `ContentView` to prevent crashes when creating or editing an event.
     *   Refactored `EditEventView` to prevent compiler timeouts.
     *   Updated deprecated `onChange` modifier.
+    *   Fixed a crash when deleting a repeating event by safely unwrapping the event's `seriesId`.
 
 ## Getting Started
 
