@@ -415,15 +415,16 @@ struct DateSelectorView: View {
                                     .font(.caption)
                                 Text(dayOfMonth(for: date))
                                     .font(.headline)
+                                if Calendar.current.isDateInToday(date) {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 5, height: 5)
+                                }
                             }
                             .id(date)
                             .padding(8)
                             .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
                             .cornerRadius(8)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Calendar.current.isDateInToday(date) ? Color.red : Color.clear, lineWidth: 2)
-                            )
                             .onTapGesture {
                                 selectedDate = date
                             }
