@@ -3,6 +3,30 @@ import UIKit
 
 // MARK: - Models
 
+enum RepeatOption: Codable, Equatable {
+    case none
+    case daily
+    case weekly(Set<Weekday>)
+}
+
+enum Weekday: Int, CaseIterable, Codable, Identifiable {
+    case sunday = 1, monday, tuesday, wednesday, thursday, friday, saturday
+    
+    var id: Int { self.rawValue }
+    
+    var shortName: String {
+        switch self {
+        case .sunday: return "S"
+        case .monday: return "M"
+        case .tuesday: return "T"
+        case .wednesday: return "W"
+        case .thursday: return "T"
+        case .friday: return "F"
+        case .saturday: return "S"
+        }
+    }
+}
+
 enum EventCategory: String, CaseIterable, Codable {
     case meeting, meal, exercise, work, personal, family, social, errands, appointment, travel, rest, other
     
@@ -28,6 +52,8 @@ enum EventCategory: String, CaseIterable, Codable {
 struct DayEvent: Identifiable, Equatable, Codable {
     /// A unique identifier for the event.
     let id: UUID
+    /// A unique identifier for a series of repeating events
+    var seriesId: UUID?
     /// The title or name of the event.
     var title: String
     /// The start time of the event, stored as seconds from midnight.
@@ -36,6 +62,8 @@ struct DayEvent: Identifiable, Equatable, Codable {
     var duration: TimeInterval
     /// The category of the event.
     var category: EventCategory
+    /// The rule for repeating the event.
+    var repeatOption: RepeatOption = .none
     
     var color: Color {
         return category.color
@@ -43,36 +71,68 @@ struct DayEvent: Identifiable, Equatable, Codable {
     
     // Coding keys used for encoding/decoding properties (Color is excluded as it's a computed property).
     enum CodingKeys: String, CodingKey {
-        case id, title, startTime, duration, category
+        case id, seriesId, title, startTime, duration, category, repeatOption
     }
     
     // Custom encoding to convert Color to a Codable format.
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encode(seriesId, forKey: .seriesId)
         try container.encode(title, forKey: .title)
         try container.encode(startTime, forKey: .startTime)
         try container.encode(duration, forKey: .duration)
         try container.encode(category, forKey: .category)
+        try container.encode(repeatOption, forKey: .repeatOption)
     }
     
     // Custom decoding to convert from a Codable format back to Color.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
+        seriesId = try container.decodeIfPresent(UUID.self, forKey: .seriesId)
         title = try container.decode(String.self, forKey: .title)
         startTime = try container.decode(TimeInterval.self, forKey: .startTime)
         duration = try container.decode(TimeInterval.self, forKey: .duration)
         category = try container.decode(EventCategory.self, forKey: .category)
+        repeatOption = try container.decode(RepeatOption.self, forKey: .repeatOption)
     }
     
     // Initializer for creating events without decoding.
-    init(id: UUID = UUID(), title: String, startTime: TimeInterval, duration: TimeInterval, category: EventCategory) {
+    init(id: UUID = UUID(), seriesId: UUID? = nil, title: String, startTime: TimeInterval, duration: TimeInterval, category: EventCategory, repeatOption: RepeatOption = .none) {
         self.id = id
+        self.seriesId = seriesId
         self.title = title
         self.startTime = startTime
         self.duration = duration
         self.category = category
+        self.repeatOption = repeatOption
+    }
+}
+
+// MARK: - Subviews
+
+struct WeekdaySelectorView: View {
+    @Binding var selectedDays: Set<Weekday>
+    
+    var body: some View {
+        HStack {
+            ForEach(Weekday.allCases) { day in
+                Text(day.shortName)
+                    .fontWeight(.bold)
+                    .foregroundColor(selectedDays.contains(day) ? .white : .primary)
+                    .frame(width: 40, height: 40)
+                    .background(selectedDays.contains(day) ? Color.blue : Color.gray.opacity(0.2))
+                    .clipShape(Circle())
+                    .onTapGesture {
+                        if selectedDays.contains(day) {
+                            selectedDays.remove(day)
+                        } else {
+                            selectedDays.insert(day)
+                        }
+                    }
+            }
+        }
     }
 }
 
@@ -203,7 +263,9 @@ struct ContentView: View {
     /// Saves the current events to UserDefaults.
     private func saveEvents(for date: Date) {
         let key = dateKey(for: date)
-        if let encoded = try? JSONEncoder().encode(events) {
+        let singleDayEvents = events.filter { $0.repeatOption == .none }
+        
+        if let encoded = try? JSONEncoder().encode(singleDayEvents) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
     }
@@ -211,20 +273,45 @@ struct ContentView: View {
     /// Loads events from UserDefaults. If no data is found, it initializes an empty array.
     private func loadEvents(for date: Date) {
         let key = dateKey(for: date)
-        guard let data = UserDefaults.standard.data(forKey: key) else {
-            // No data found for this date, so we'll start with an empty schedule.
-            events = []
-            return
+        var allEvents: [DayEvent] = []
+        
+        // Load single-day events
+        if let data = UserDefaults.standard.data(forKey: key) {
+            do {
+                let decodedEvents = try JSONDecoder().decode([DayEvent].self, from: data)
+                allEvents.append(contentsOf: decodedEvents)
+            } catch {
+                print("Failed to decode single-day events for key '\(key)': \(error)")
+            }
         }
         
-        do {
-            // Attempt to decode the saved events from UserDefaults.
-            let decodedEvents = try JSONDecoder().decode([DayEvent].self, from: data)
-            events = decodedEvents
-        } catch {
-            // If decoding fails, log the error and start with an empty schedule to prevent data loss.
-            print("Failed to decode events for key '\(key)': \(error)")
-            events = []
+        // Load and filter repeating events
+        if let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents") {
+            do {
+                let repeatingEvents = try JSONDecoder().decode([DayEvent].self, from: data)
+                let occurrences = repeatingEvents.filter { event in
+                    shouldEventOccur(event, on: date)
+                }
+                allEvents.append(contentsOf: occurrences)
+            } catch {
+                print("Failed to decode repeating events: \(error)")
+            }
+        }
+        
+        events = allEvents
+    }
+
+    private func shouldEventOccur(_ event: DayEvent, on date: Date) -> Bool {
+        let calendar = Calendar.current
+        let weekday = calendar.component(.weekday, from: date)
+        
+        switch event.repeatOption {
+        case .none:
+            return false
+        case .daily:
+            return true
+        case .weekly(let selectedDays):
+            return selectedDays.contains(Weekday(rawValue: weekday)!)
         }
     }
 }
@@ -541,6 +628,8 @@ struct NewEventView: View {
     @State private var startTime = Date()
     @State private var endTime = Date()
     @State private var category: EventCategory = .work
+    @State private var repeatOption: RepeatOption = .none
+    @State private var selectedWeekdays: Set<Weekday> = []
     
     @Environment(\.dismiss) var dismiss
     
@@ -561,6 +650,16 @@ struct NewEventView: View {
                         }.tag(category)
                     }
                 }
+                
+                Picker("Repeats", selection: $repeatOption) {
+                    Text("Never").tag(RepeatOption.none)
+                    Text("Daily").tag(RepeatOption.daily)
+                    Text("Weekly").tag(RepeatOption.weekly(selectedWeekdays))
+                }
+                
+                if case .weekly = repeatOption {
+                    WeekdaySelectorView(selectedDays: $selectedWeekdays)
+                }
             }
             .navigationTitle("New Event")
             .toolbar {
@@ -572,22 +671,29 @@ struct NewEventView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard endTime > startTime else { return }
+                        
+                        var finalRepeatOption = repeatOption
+                        if case .weekly = finalRepeatOption {
+                            finalRepeatOption = .weekly(selectedWeekdays)
+                        }
+
                         let startOfDay = Calendar.current.startOfDay(for: eventDate)
                         let startTimeInterval = startTime.timeIntervalSince(startOfDay)
                         let endTimeInterval = endTime.timeIntervalSince(startOfDay)
                         
-                        let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
+                        let newEvent = DayEvent(
+                            seriesId: finalRepeatOption == .none ? nil : UUID(),
+                            title: title,
+                            startTime: startTimeInterval,
+                            duration: endTimeInterval - startTimeInterval,
+                            category: category,
+                            repeatOption: finalRepeatOption
+                        )
                         
-                        // If the event is on a different day, we need to load the events for that day,
-                        // add the new event, and then save it.
-                        if !Calendar.current.isDate(eventDate, inSameDayAs: selectedDate) {
-                            var otherDateEvents = loadEventsForDate(eventDate)
-                            otherDateEvents.append(newEvent)
-                            saveEventsForDate(otherDateEvents, for: eventDate)
-                        } else {
-                            events.append(newEvent)
-                            saveEvents(selectedDate)
-                        }
+                        save(event: newEvent)
+                        
+                        // Reload events for the currently selected date to reflect changes.
+                        saveEvents(selectedDate)
                         
                         dismiss()
                     }
@@ -598,6 +704,18 @@ struct NewEventView: View {
                 // When the view appears, set the date picker to the selected date.
                 eventDate = selectedDate
             }
+        }
+    }
+    
+    private func save(event: DayEvent) {
+        if event.repeatOption == .none {
+            var dayEvents = loadEventsForDate(eventDate)
+            dayEvents.append(event)
+            saveEventsForDate(dayEvents, for: eventDate)
+        } else {
+            var repeatingEvents = loadMasterRepeatingEvents()
+            repeatingEvents.append(event)
+            saveMasterRepeatingEvents(repeatingEvents)
         }
     }
     
@@ -614,6 +732,20 @@ struct NewEventView: View {
         let key = dateKey(for: date)
         if let encoded = try? JSONEncoder().encode(events) {
             UserDefaults.standard.set(encoded, forKey: key)
+        }
+    }
+    
+    private func loadMasterRepeatingEvents() -> [DayEvent] {
+        guard let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents"),
+              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+            return []
+        }
+        return decodedEvents
+    }
+    
+    private func saveMasterRepeatingEvents(_ events: [DayEvent]) {
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
     }
 
@@ -635,6 +767,8 @@ struct EditEventView: View {
     @State private var startTime: Date
     @State private var endTime: Date
     @State private var category: EventCategory
+    @State private var repeatOption: RepeatOption
+    @State private var selectedWeekdays: Set<Weekday>
     
     @Environment(\.dismiss) var dismiss
     
@@ -650,6 +784,13 @@ struct EditEventView: View {
         _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
         _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
         _category = State(initialValue: event.wrappedValue.category)
+        _repeatOption = State(initialValue: event.wrappedValue.repeatOption)
+        
+        if case .weekly(let weekdays) = event.wrappedValue.repeatOption {
+            _selectedWeekdays = State(initialValue: weekdays)
+        } else {
+            _selectedWeekdays = State(initialValue: [])
+        }
     }
     
     var body: some View {
@@ -669,7 +810,21 @@ struct EditEventView: View {
                         }.tag(category)
                     }
                 }
+                
+                Picker("Repeats", selection: $repeatOption) {
+                    Text("Never").tag(RepeatOption.none)
+                    Text("Daily").tag(RepeatOption.daily)
+                    Text("Weekly").tag(RepeatOption.weekly(selectedWeekdays))
+                }
+                
+                if case .weekly = repeatOption {
+                    WeekdaySelectorView(selectedDays: $selectedWeekdays)
+                }
+                
                 Button("Delete Event") {
+                    // For now, we'll just delete the single instance.
+                    // A more robust implementation would ask whether to delete the
+                    // entire series if it's a repeating event.
                     events.removeAll { $0.id == event.id }
                     saveEvents(selectedDate)
                     dismiss()
@@ -687,61 +842,30 @@ struct EditEventView: View {
                     Button("Save") {
                         guard endTime > startTime else { return }
                         
-                        // If the date was changed, we need to remove the event from the old date's
-                        // list and add it to the new one.
-                        if !Calendar.current.isDate(eventDate, inSameDayAs: selectedDate) {
-                            events.removeAll { $0.id == event.id }
-                            saveEvents(selectedDate)
-                            
-                            var otherDateEvents = loadEventsForDate(eventDate)
-                            let startOfDay = Calendar.current.startOfDay(for: eventDate)
-                            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                            
-                            let movedEvent = DayEvent(id: event.id, title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
-                            otherDateEvents.append(movedEvent)
-                            saveEventsForDate(otherDateEvents, for: eventDate)
+                        // Here, we're just updating the single instance.
+                        // A full implementation would need to handle series editing.
+                        let startOfDay = Calendar.current.startOfDay(for: eventDate)
+                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                        
+                        event.title = title
+                        event.startTime = startTimeInterval
+                        event.duration = endTimeInterval - startTimeInterval
+                        event.category = category
+                        
+                        if case .weekly = repeatOption {
+                            event.repeatOption = .weekly(selectedWeekdays)
                         } else {
-                            let startOfDay = Calendar.current.startOfDay(for: selectedDate)
-                            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                            
-                            event.title = title
-                            event.startTime = startTimeInterval
-                            event.duration = endTimeInterval - startTimeInterval
-                            event.category = category
-                            
-                            saveEvents(selectedDate)
+                            event.repeatOption = repeatOption
                         }
                         
+                        saveEvents(selectedDate)
                         dismiss()
                     }
                     .disabled(endTime <= startTime)
                 }
             }
         }
-    }
-    
-    private func loadEventsForDate(_ date: Date) -> [DayEvent] {
-        let key = dateKey(for: date)
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
-            return []
-        }
-        return decodedEvents
-    }
-
-    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
-        let key = dateKey(for: date)
-        if let encoded = try? JSONEncoder().encode(events) {
-            UserDefaults.standard.set(encoded, forKey: key)
-        }
-    }
-
-    private func dateKey(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
     }
 }
 
