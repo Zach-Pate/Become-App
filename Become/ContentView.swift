@@ -704,6 +704,11 @@ struct NewEventView: View {
     
     @Environment(\.dismiss) var dismiss
     
+    init(selectedDate: Date) {
+        self.selectedDate = selectedDate
+        _eventDate = State(initialValue: selectedDate)
+    }
+    
     var body: some View {
         NavigationView {
             Form {
@@ -767,10 +772,6 @@ struct NewEventView: View {
                     }
                     .disabled(endTime <= startTime)
                 }
-            }
-            .onAppear {
-                // When the view appears, set the date picker to the selected date.
-                eventDate = selectedDate
             }
         }
     }
