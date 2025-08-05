@@ -221,7 +221,9 @@ struct ContentView: View {
         .onAppear(perform: setup)
         .onDisappear(perform: cancelTimer)
         .sheet(isPresented: $isAddingEvent) {
-            NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
+            // The saveEvents closure from NewEventView passes a Date argument that is not needed here,
+            // so it is ignored with `_ in`.
+            NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { _ in saveEvents(for: selectedDate) })
                 .presentationDetents([.medium])
         }
         .sheet(item: $editingEvent) { event in

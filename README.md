@@ -50,7 +50,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **August 5, 2025:**
     *   Fixed a build failure caused by several SwiftUI compilation errors.
     *   Made the `RepeatOption` enum `Hashable` to allow its use in `Picker` views.
-    *   Corrected a closure call in `ContentView` to prevent a crash when editing an event.
+    *   Corrected closure calls in `ContentView` to prevent crashes when creating or editing an event.
 
 ## Getting Started
 
