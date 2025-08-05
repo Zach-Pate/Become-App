@@ -171,12 +171,14 @@ struct ContentView: View {
     var body: some View {
         let swipeGesture = DragGesture()
             .onEnded { value in
-                if value.translation.width < -50 {
-                    // Swipe left to go to the next day
-                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                } else if value.translation.width > 50 {
-                    // Swipe right to go to the previous day
-                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                withAnimation(.spring) {
+                    if value.translation.width < -50 {
+                        // Swipe left to go to the next day
+                        selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                    } else if value.translation.width > 50 {
+                        // Swipe right to go to the previous day
+                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                    }
                 }
             }
 
@@ -234,6 +236,7 @@ struct ContentView: View {
                     .presentationDetents([.medium])
             }
         }
+        .transition(.slide)
     }
     
     private var dateFormatter: DateFormatter {
