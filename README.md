@@ -6,7 +6,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 
 ## Features
 
-*   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days. The app automatically starts on the current date, which is centered and highlighted in the menu.
+*   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days. You can also swipe left or right to navigate between days. The app automatically starts on the current date, which is centered and highlighted in the menu.
 *   **Smart Scroll:** The schedule automatically scrolls to 6 AM when you open the app or switch between days, so you can start planning from the beginning of your day.
 *   **Repeating Events:** Set events to repeat daily or on specific days of the week. The app intelligently displays repeating events on the correct days.
 *   **Cross-Day Event Management:** You can now move events to different days. When adding or editing an event, a date picker is available to select the desired day.

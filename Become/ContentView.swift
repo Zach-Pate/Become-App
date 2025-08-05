@@ -163,7 +163,18 @@ struct ContentView: View {
     // MARK: - Body
     
     var body: some View {
-        VStack {
+        let swipeGesture = DragGesture()
+            .onEnded { value in
+                if value.translation.width < -50 {
+                    // Swipe left to go to the next day
+                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                } else if value.translation.width > 50 {
+                    // Swipe right to go to the previous day
+                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                }
+            }
+
+        return VStack {
             DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
             ScrollViewReader { proxy in
                 ScrollView {
@@ -199,6 +210,7 @@ struct ContentView: View {
                 }
             }
         }
+        .gesture(swipeGesture)
         .navigationTitle(dateFormatter.string(from: selectedDate))
         .onAppear(perform: setup)
         .onDisappear(perform: cancelTimer)
