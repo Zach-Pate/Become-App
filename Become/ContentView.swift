@@ -420,6 +420,10 @@ struct DateSelectorView: View {
                             .padding(8)
                             .background(Calendar.current.isDate(date, inSameDayAs: selectedDate) ? Color.blue.opacity(0.3) : Color.clear)
                             .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Calendar.current.isDateInToday(date) ? Color.red : Color.clear, lineWidth: 2)
+                            )
                             .onTapGesture {
                                 selectedDate = date
                             }
