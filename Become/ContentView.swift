@@ -597,13 +597,16 @@ struct EventTileView: View {
                 .fill(event.color.opacity(0.8))
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(event.title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.9))
+                if tileHeight >= 20 {
+                    Text(event.title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+                if tileHeight >= 40 {
+                    Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.9))
+                }
             }
             .padding(8)
             
