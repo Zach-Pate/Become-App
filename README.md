@@ -64,6 +64,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Reverted the time entry system to use time wheels instead of text fields.
     *   Added a permanent red box around the current date in the date selector.
     *   Fixed a bug that prevented events from being created on dates other than the currently selected date.
+    *   Fixed a bug where events created on a different day would be displayed at the wrong time.
 
 ## Getting Started
 

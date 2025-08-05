@@ -773,6 +773,48 @@ struct NewEventView: View {
                     .disabled(endTime <= startTime)
                 }
             }
+            .onAppear(perform: setupInitialTimes)
+            .onChange(of: eventDate) {
+                updateTimeDates(with: eventDate)
+            }
+        }
+    }
+    
+    /// Sets the initial start and end times when the view appears.
+    /// This ensures that the time pickers are initialized with the currently selected date from the main view
+    /// and a sensible default time (the current time).
+    private func setupInitialTimes() {
+        let calendar = Calendar.current
+        
+        let now = Date()
+        var components = calendar.dateComponents([.hour, .minute], from: now)
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: eventDate)
+        components.year = dateComponents.year
+        components.month = dateComponents.month
+        components.day = dateComponents.day
+        
+        if let initialStartTime = calendar.date(from: components) {
+            startTime = initialStartTime
+            endTime = calendar.date(byAdding: .hour, value: 1, to: initialStartTime) ?? initialStartTime
+        }
+    }
+
+    /// Updates the `startTime` and `endTime` dates to reflect a new date selected in the `eventDate` picker.
+    /// This keeps the time component the same while changing the date component, preventing events from being
+    /// scheduled on the wrong day.
+    /// - Parameter newDate: The new date to apply to the start and end times.
+    private func updateTimeDates(with newDate: Date) {
+        let calendar = Calendar.current
+        
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+        var newDateComponents = calendar.dateComponents([.year, .month, .day], from: newDate)
+        newDateComponents.hour = timeComponents.hour
+        newDateComponents.minute = timeComponents.minute
+        
+        if let updatedStartTime = calendar.date(from: newDateComponents) {
+            let duration = endTime.timeIntervalSince(startTime)
+            startTime = updatedStartTime
+            endTime = updatedStartTime.addingTimeInterval(duration)
         }
     }
 
