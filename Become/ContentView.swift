@@ -330,7 +330,10 @@ struct ContentView: View {
         case .daily:
             return true
         case .weekly(let selectedDays):
-            return selectedDays.contains(Weekday(rawValue: weekday)!)
+            if let currentWeekday = Weekday(rawValue: weekday) {
+                return selectedDays.contains(currentWeekday)
+            }
+            return false
         }
     }
 }
