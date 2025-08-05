@@ -156,6 +156,7 @@ struct ContentView: View {
     @State private var isAddingEvent = false
     @State private var editingEvent: DayEvent?
     @State private var timer: Timer?
+    @State private var isDragging = false
 
     // MARK: - View Constants
     
@@ -197,7 +198,7 @@ struct ContentView: View {
 
                         // Iterate over the events and create a view for each one.
                         ForEach($events) { $event in
-                            EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                            EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent, isDragging: $isDragging)
                                 .offset(y: yOffset(for: event.startTime))
                                 .frame(height: height(for: event.duration))
                                 .padding(.leading, 60)
@@ -209,6 +210,7 @@ struct ContentView: View {
                         }
                     }
                 }
+                .scrollDisabled(isDragging)
                 .onAppear {
                     proxy.scrollTo(6, anchor: .top)
                 }
@@ -553,9 +555,10 @@ struct EventTileView: View {
     let snapIncrement: TimeInterval
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
+    @Binding var isDragging: Bool
     
     @State private var currentDragOffset: CGSize = .zero
-    @GestureState private var isLongPressingGestureState: Bool = false
+    @GestureState private var isLongPressingForEdit: Bool = false
     
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
@@ -572,30 +575,32 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        let longPress = LongPressGesture(minimumDuration: 0.5)
-            .updating($isLongPressingGestureState) { value, state, _ in
+        let longPressGesture = LongPressGesture(minimumDuration: 0.5)
+            .updating($isLongPressingForEdit) { value, state, _ in
                 state = value
             }
             .onEnded { _ in
                 editingEvent = event
             }
 
-        let drag = DragGesture()
+        let dragGesture = DragGesture()
             .onChanged { value in
-                if !isLongPressingGestureState {
-                    self.currentDragOffset = value.translation
+                if !isLongPressingForEdit {
+                    isDragging = true
+                    currentDragOffset = value.translation
                 }
             }
             .onEnded { value in
-                if !isLongPressingGestureState {
+                if !isLongPressingForEdit {
                     event.startTime = draggedStartTime
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     saveEvents()
                 }
-                self.currentDragOffset = .zero
+                isDragging = false
+                currentDragOffset = .zero
             }
 
-        let combined = longPress.simultaneously(with: drag)
+        let combinedGesture = longPressGesture.simultaneously(with: dragGesture)
 
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 8)
@@ -670,7 +675,7 @@ struct EventTileView: View {
         .clipped()
         .padding(.trailing, 10)
         .offset(y: currentDragOffset.height)
-        .gesture(combined)
+        .gesture(combinedGesture)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
