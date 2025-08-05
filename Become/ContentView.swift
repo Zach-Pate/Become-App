@@ -154,7 +154,7 @@ struct ContentView: View {
     // MARK: - View Constants
     
     /// The height of a single hour in the timeline view.
-    private let hourHeight: CGFloat = 80.0
+    private let hourHeight: CGFloat = 52.8
     /// The total number of hours to display in the timeline.
     private let totalHours = 24
     /// The time increment for snapping events, in seconds (5 minutes).
@@ -392,7 +392,7 @@ struct DateSelectorView: View {
 
 /// A view that draws the background of the timeline, including the time labels and hour lines.
 struct TimelineView: View {
-    private let hourHeight: CGFloat = 80.0
+    private let hourHeight: CGFloat = 52.8
     private let totalHours = 24
 
     var body: some View {
@@ -431,7 +431,7 @@ struct SnapGridView: View {
 
 /// A view that displays the time labels for each hour of the day.
 struct TimeLabelsView: View {
-    private let hourHeight: CGFloat = 80.0
+    private let hourHeight: CGFloat = 52.8
     private let totalHours = 24
 
     var body: some View {
@@ -457,7 +457,7 @@ struct TimeLabelsView: View {
 
 /// A view that draws the horizontal lines for each hour of the day.
 struct HourLinesView: View {
-    private let hourHeight: CGFloat = 80.0
+    private let hourHeight: CGFloat = 52.8
     private let totalHours = 24
 
     var body: some View {
