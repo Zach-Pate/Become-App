@@ -165,37 +165,43 @@ struct ContentView: View {
     var body: some View {
         VStack {
             DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
-            ScrollView {
-                // The ZStack layers the event tiles on top of the timeline background.
-                ZStack(alignment: .topLeading) {
-                    // The background timeline view.
-                    TimelineView()
-                        .frame(height: hourHeight * CGFloat(totalHours))
-                    
-                    SnapGridView(hourHeight: hourHeight, snapIncrement: snapIncrement)
-                        .frame(height: hourHeight * CGFloat(totalHours))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // The ZStack layers the event tiles on top of the timeline background.
+                    ZStack(alignment: .topLeading) {
+                        // The background timeline view.
+                        TimelineView()
+                            .frame(height: hourHeight * CGFloat(totalHours))
+                        
+                        SnapGridView(hourHeight: hourHeight, snapIncrement: snapIncrement)
+                            .frame(height: hourHeight * CGFloat(totalHours))
 
-                    // Iterate over the events and create a view for each one.
-                    ForEach($events) { $event in
-                        EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
-                            .offset(y: yOffset(for: event.startTime))
-                            .frame(height: height(for: event.duration))
-                            .padding(.leading, 60)
+                        // Iterate over the events and create a view for each one.
+                        ForEach($events) { $event in
+                            EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent)
+                                .offset(y: yOffset(for: event.startTime))
+                                .frame(height: height(for: event.duration))
+                                .padding(.leading, 60)
+                        }
+                        
+                        if Calendar.current.isDateInToday(selectedDate) {
+                            CurrentTimeIndicator(hourHeight: hourHeight)
+                                .offset(y: yOffset(for: currentTime))
+                        }
                     }
-                    
-                    if Calendar.current.isDateInToday(selectedDate) {
-                        CurrentTimeIndicator(hourHeight: hourHeight)
-                            .offset(y: yOffset(for: currentTime))
-                    }
+                }
+                .onAppear {
+                    proxy.scrollTo(6, anchor: .top)
+                }
+                .onChange(of: selectedDate) {
+                    loadEvents(for: $0)
+                    proxy.scrollTo(6, anchor: .top)
                 }
             }
         }
         .navigationTitle(dateFormatter.string(from: selectedDate))
         .onAppear(perform: setup)
         .onDisappear(perform: cancelTimer)
-        .onChange(of: selectedDate) {
-            loadEvents(for: $0)
-        }
         .sheet(isPresented: $isAddingEvent) {
             NewEventView(events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
                 .presentationDetents([.medium])
@@ -441,6 +447,7 @@ struct TimeLabelsView: View {
                     .font(.caption)
                     .frame(height: hourHeight, alignment: .top)
                     .foregroundColor(.secondary)
+                    .id(hour)
             }
         }
     }
