@@ -697,11 +697,11 @@ struct NewEventView: View {
     @Environment(\.dismiss) var dismiss
     
     private var startTime: Date {
-        dateFromString(startTimeString) ?? Date()
+        dateFromString(startTimeString, on: eventDate) ?? eventDate
     }
     
     private var endTime: Date {
-        dateFromString(endTimeString) ?? Date()
+        dateFromString(endTimeString, on: eventDate) ?? eventDate
     }
     
     var body: some View {
@@ -775,10 +775,18 @@ struct NewEventView: View {
         }
     }
 
-    private func dateFromString(_ timeString: String) -> Date? {
+    private func dateFromString(_ timeString: String, on date: Date) -> Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
-        return formatter.date(from: timeString)
+        guard let timeDate = formatter.date(from: timeString) else { return nil }
+
+        let calendar = Calendar.current
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: timeDate)
+        
+        return calendar.date(bySettingHour: timeComponents.hour ?? 0,
+                             minute: timeComponents.minute ?? 0,
+                             second: 0,
+                             of: date)
     }
         
     private func save(event: DayEvent) {
@@ -848,11 +856,11 @@ struct EditEventView: View {
     @Environment(\.dismiss) var dismiss
     
     private var startTime: Date {
-        dateFromString(startTimeString) ?? Date()
+        dateFromString(startTimeString, on: eventDate) ?? eventDate
     }
     
     private var endTime: Date {
-        dateFromString(endTimeString) ?? Date()
+        dateFromString(endTimeString, on: eventDate) ?? eventDate
     }
     
     init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping (Date) -> Void) {
@@ -996,10 +1004,18 @@ struct EditEventView: View {
         }
     }
     
-    private func dateFromString(_ timeString: String) -> Date? {
+    private func dateFromString(_ timeString: String, on date: Date) -> Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
-        return formatter.date(from: timeString)
+        guard let timeDate = formatter.date(from: timeString) else { return nil }
+
+        let calendar = Calendar.current
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: timeDate)
+        
+        return calendar.date(bySettingHour: timeComponents.hour ?? 0,
+                             minute: timeComponents.minute ?? 0,
+                             second: 0,
+                             of: date)
     }
     
     private func stringFromDate(_ date: Date) -> String {
