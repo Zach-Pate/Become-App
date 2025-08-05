@@ -592,21 +592,18 @@ struct EventTileView: View {
 
         let combined = longPress.simultaneously(with: drag)
 
-        return ZStack {
+        return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 8)
                 .fill(event.color.opacity(0.8))
             
             VStack(alignment: .leading, spacing: 4) {
-                if tileHeight >= 20 {
-                    Text(event.title)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                }
-                if tileHeight >= 40 {
-                    Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.9))
-                }
+                Text(event.title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Text("\(formattedTime(event.startTime)) - \(formattedTime(event.startTime + event.duration))")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.9))
             }
             .padding(8)
             
@@ -662,6 +659,7 @@ struct EventTileView: View {
                     )
             }
         }
+        .clipped()
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
         .gesture(combined)

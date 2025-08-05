@@ -38,7 +38,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Velocity-Based Snapping:** Events now snap to a 10-minute grid when dragged or resized.
 *   **Haptic Feedback:** The app provides haptic feedback when you're moving or resizing an event.
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
-*   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter.
+*   **Adaptive Tile Content:** The event title and time are always aligned to the top-left of the tile, and content is clipped to prevent it from overflowing into other tiles.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
 *   **Stable Persistence:** Your schedule is reliably saved and restored between sessions on a per-day basis.
 *   **Input Validation:** The app prevents the creation of events with a zero or negative duration.
@@ -65,6 +65,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Replaced the red box around the current date with a more subtle red dot indicator.
     *   Fixed a bug that prevented events from being created on dates other than the currently selected date.
     *   Fixed a bug where events created on a different day would be displayed at the wrong time.
+    *   Fixed an issue where event tile content would overflow its bounds and have inconsistent text alignment.
 
 ## Getting Started
 
