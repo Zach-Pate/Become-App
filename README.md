@@ -45,6 +45,13 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Stable Persistence:** Your schedule is reliably saved and restored between sessions on a per-day basis.
 *   **Input Validation:** The app prevents the creation of events with a zero or negative duration.
 
+## Changelog
+
+*   **August 5, 2025:**
+    *   Fixed a build failure caused by several SwiftUI compilation errors.
+    *   Made the `RepeatOption` enum `Hashable` to allow its use in `Picker` views.
+    *   Corrected a closure call in `ContentView` to prevent a crash when editing an event.
+
 ## Getting Started
 
 To get started with this project, you'll need to have [XcodeGen](https://github.com/yonaskolb/XcodeGen) installed. You can install it with Homebrew:

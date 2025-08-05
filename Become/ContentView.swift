@@ -3,7 +3,8 @@ import UIKit
 
 // MARK: - Models
 
-enum RepeatOption: Codable, Equatable {
+// Added Hashable conformance for use in SwiftUI Pickers.
+enum RepeatOption: Codable, Equatable, Hashable {
     case none
     case daily
     case weekly(Set<Weekday>)
@@ -225,7 +226,9 @@ struct ContentView: View {
         }
         .sheet(item: $editingEvent) { event in
             if let index = events.firstIndex(where: { $0.id == event.id }) {
-                EditEventView(event: $events[index], events: $events, selectedDate: selectedDate, saveEvents: { saveEvents(for: selectedDate) })
+                // The saveEvents closure from EditEventView passes a Date argument that is not needed here,
+                // so it is ignored with `_ in`.
+                EditEventView(event: $events[index], events: $events, selectedDate: selectedDate, saveEvents: { _ in saveEvents(for: selectedDate) })
                     .presentationDetents([.medium])
             }
         }
