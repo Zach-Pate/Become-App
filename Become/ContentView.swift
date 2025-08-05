@@ -551,6 +551,7 @@ struct EventTileView: View {
     @Binding var editingEvent: DayEvent?
     
     @GestureState private var dragOffset: CGSize = .zero
+    @State private var isLongPressing = false
     
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
@@ -559,37 +560,37 @@ struct EventTileView: View {
     var body: some View {
         let drag = DragGesture()
             .updating($dragOffset) { value, state, _ in
-                // As the user drags, this closure is called.
-                // We update the `dragOffset` gesture state, which temporarily
-                // changes the visual offset of the event tile.
-                state = value.translation
+                if !isLongPressing {
+                    state = value.translation
+                }
             }
             .onEnded { value in
-                let timeOffset = (value.translation.height / hourHeight) * 3600
-                let newStartTime = event.startTime + timeOffset
-                
-                // Check the velocity of the drag to determine if we should snap.
-                let velocity = value.predictedEndTranslation.height
-                if abs(velocity) > 500 { // Threshold for a "fast" drag
-                    // Snap to the nearest 5-minute increment.
-                    let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                    event.startTime = snappedStartTime
-                } else {
-                    // For a slow drag, allow for 1-minute precision.
-                    let preciseStartTime = round(newStartTime / 60) * 60
-                    event.startTime = preciseStartTime
+                if !isLongPressing {
+                    let timeOffset = (value.translation.height / hourHeight) * 3600
+                    let newStartTime = event.startTime + timeOffset
+                    
+                    let velocity = value.predictedEndTranslation.height
+                    if abs(velocity) > 500 {
+                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                        event.startTime = snappedStartTime
+                    } else {
+                        let preciseStartTime = round(newStartTime / 60) * 60
+                        event.startTime = preciseStartTime
+                    }
+                    
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    saveEvents()
                 }
-                
-                // Provide haptic feedback when the event is moved.
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                
-                saveEvents()
+                isLongPressing = false
             }
 
         let longPress = LongPressGesture(minimumDuration: 0.5)
             .onEnded { _ in
+                isLongPressing = true
                 editingEvent = event
             }
+
+        let combined = longPress.simultaneously(with: drag)
 
         return ZStack {
             RoundedRectangle(cornerRadius: 8)
@@ -614,7 +615,8 @@ struct EventTileView: View {
                 // Top handle for resizing.
                 Rectangle()
                     .fill(Color.clear)
-                    .frame(height: 5)
+                    .frame(height: 10)
+                    .contentShape(Rectangle())
                     .gesture(
                         DragGesture()
                             .onChanged { value in
@@ -637,7 +639,8 @@ struct EventTileView: View {
                 // Bottom handle for resizing.
                 Rectangle()
                     .fill(Color.clear)
-                    .frame(height: 5)
+                    .frame(height: 10)
+                    .contentShape(Rectangle())
                     .gesture(
                         DragGesture()
                             .onChanged { value in
@@ -657,10 +660,7 @@ struct EventTileView: View {
         }
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
-        .gesture(drag)
-        .onLongPressGesture(minimumDuration: 0.5) {
-            editingEvent = event
-        }
+        .gesture(combined)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
