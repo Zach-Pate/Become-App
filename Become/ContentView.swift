@@ -534,9 +534,10 @@ struct CurrentTimeIndicator: View {
 struct NewEventView: View {
     @Binding var events: [DayEvent]
     let selectedDate: Date
-    let saveEvents: () -> Void
+    let saveEvents: (Date) -> Void
     
     @State private var title = ""
+    @State private var eventDate = Date()
     @State private var startTime = Date()
     @State private var endTime = Date()
     @State private var category: EventCategory = .work
@@ -547,6 +548,7 @@ struct NewEventView: View {
         NavigationView {
             Form {
                 TextField("Title", text: $title)
+                DatePicker("Date", selection: $eventDate, displayedComponents: .date)
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
@@ -570,19 +572,55 @@ struct NewEventView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard endTime > startTime else { return }
-                        let startOfDay = Calendar.current.startOfDay(for: selectedDate)
+                        let startOfDay = Calendar.current.startOfDay(for: eventDate)
                         let startTimeInterval = startTime.timeIntervalSince(startOfDay)
                         let endTimeInterval = endTime.timeIntervalSince(startOfDay)
                         
                         let newEvent = DayEvent(title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
-                        events.append(newEvent)
-                        saveEvents()
+                        
+                        // If the event is on a different day, we need to load the events for that day,
+                        // add the new event, and then save it.
+                        if !Calendar.current.isDate(eventDate, inSameDayAs: selectedDate) {
+                            var otherDateEvents = loadEventsForDate(eventDate)
+                            otherDateEvents.append(newEvent)
+                            saveEventsForDate(otherDateEvents, for: eventDate)
+                        } else {
+                            events.append(newEvent)
+                            saveEvents(selectedDate)
+                        }
+                        
                         dismiss()
                     }
                     .disabled(endTime <= startTime)
                 }
             }
+            .onAppear {
+                // When the view appears, set the date picker to the selected date.
+                eventDate = selectedDate
+            }
         }
+    }
+    
+    private func loadEventsForDate(_ date: Date) -> [DayEvent] {
+        let key = dateKey(for: date)
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+            return []
+        }
+        return decodedEvents
+    }
+
+    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
+        let key = dateKey(for: date)
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
+    }
+
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }
 
@@ -590,16 +628,17 @@ struct EditEventView: View {
     @Binding var event: DayEvent
     @Binding var events: [DayEvent]
     let selectedDate: Date
-    let saveEvents: () -> Void
+    let saveEvents: (Date) -> Void
     
     @State private var title: String
+    @State private var eventDate: Date
     @State private var startTime: Date
     @State private var endTime: Date
     @State private var category: EventCategory
     
     @Environment(\.dismiss) var dismiss
     
-    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping () -> Void) {
+    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping (Date) -> Void) {
         self._event = event
         self._events = events
         self.selectedDate = selectedDate
@@ -607,6 +646,7 @@ struct EditEventView: View {
         
         let startOfDay = Calendar.current.startOfDay(for: selectedDate)
         _title = State(initialValue: event.wrappedValue.title)
+        _eventDate = State(initialValue: selectedDate)
         _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
         _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
         _category = State(initialValue: event.wrappedValue.category)
@@ -616,6 +656,7 @@ struct EditEventView: View {
         NavigationView {
             Form {
                 TextField("Title", text: $title)
+                DatePicker("Date", selection: $eventDate, displayedComponents: .date)
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
                 Picker("Category", selection: $category) {
@@ -630,7 +671,7 @@ struct EditEventView: View {
                 }
                 Button("Delete Event") {
                     events.removeAll { $0.id == event.id }
-                    saveEvents()
+                    saveEvents(selectedDate)
                     dismiss()
                 }
                 .foregroundColor(.red)
@@ -645,22 +686,62 @@ struct EditEventView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         guard endTime > startTime else { return }
-                        let startOfDay = Calendar.current.startOfDay(for: selectedDate)
-                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
                         
-                        event.title = title
-                        event.startTime = startTimeInterval
-                        event.duration = endTimeInterval - startTimeInterval
-                        event.category = category
+                        // If the date was changed, we need to remove the event from the old date's
+                        // list and add it to the new one.
+                        if !Calendar.current.isDate(eventDate, inSameDayAs: selectedDate) {
+                            events.removeAll { $0.id == event.id }
+                            saveEvents(selectedDate)
+                            
+                            var otherDateEvents = loadEventsForDate(eventDate)
+                            let startOfDay = Calendar.current.startOfDay(for: eventDate)
+                            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                            
+                            let movedEvent = DayEvent(id: event.id, title: title, startTime: startTimeInterval, duration: endTimeInterval - startTimeInterval, category: category)
+                            otherDateEvents.append(movedEvent)
+                            saveEventsForDate(otherDateEvents, for: eventDate)
+                        } else {
+                            let startOfDay = Calendar.current.startOfDay(for: selectedDate)
+                            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                            
+                            event.title = title
+                            event.startTime = startTimeInterval
+                            event.duration = endTimeInterval - startTimeInterval
+                            event.category = category
+                            
+                            saveEvents(selectedDate)
+                        }
                         
-                        saveEvents()
                         dismiss()
                     }
                     .disabled(endTime <= startTime)
                 }
             }
         }
+    }
+    
+    private func loadEventsForDate(_ date: Date) -> [DayEvent] {
+        let key = dateKey(for: date)
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+            return []
+        }
+        return decodedEvents
+    }
+
+    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
+        let key = dateKey(for: date)
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
+    }
+
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }
 
