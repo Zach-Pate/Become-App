@@ -210,8 +210,8 @@ struct ContentView: View {
                 .onAppear {
                     proxy.scrollTo(6, anchor: .top)
                 }
-                .onChange(of: selectedDate) {
-                    loadEvents(for: $0)
+                .onChange(of: selectedDate) { oldValue, newValue in
+                    loadEvents(for: newValue)
                     proxy.scrollTo(6, anchor: .top)
                 }
             }
@@ -833,39 +833,10 @@ struct EditEventView: View {
         }
     }
     
+    // Breaking the body into smaller components to avoid compiler timeouts.
     var body: some View {
         NavigationView {
-            Form {
-                TextField("Title", text: $title)
-                DatePicker("Date", selection: $eventDate, displayedComponents: .date)
-                DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
-                DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
-                Picker("Category", selection: $category) {
-                    ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
-                        HStack {
-                            Circle()
-                                .fill(category.color)
-                                .frame(width: 12, height: 12)
-                            Text(category.rawValue.capitalized)
-                        }.tag(category)
-                    }
-                }
-                
-                Picker("Repeats", selection: $repeatOption) {
-                    Text("Never").tag(RepeatOption.none)
-                    Text("Daily").tag(RepeatOption.daily)
-                    Text("Weekly").tag(RepeatOption.weekly(selectedWeekdays))
-                }
-                
-                if case .weekly = repeatOption {
-                    WeekdaySelectorView(selectedDays: $selectedWeekdays)
-                }
-                
-                Button("Delete Event") {
-                    showDeleteAlert = true
-                }
-                .foregroundColor(.red)
-            }
+            eventForm
             .navigationTitle("Edit Event")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -874,45 +845,98 @@ struct EditEventView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        guard endTime > startTime else { return }
-                        
-                        // Here, we're just updating the single instance.
-                        // A full implementation would need to handle series editing.
-                        let startOfDay = Calendar.current.startOfDay(for: eventDate)
-                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                        
-                        event.title = title
-                        event.startTime = startTimeInterval
-                        event.duration = endTimeInterval - startTimeInterval
-                        event.category = category
-                        
-                        if case .weekly = repeatOption {
-                            event.repeatOption = .weekly(selectedWeekdays)
-                        } else {
-                            event.repeatOption = repeatOption
-                        }
-                        
-                        saveEvents(selectedDate)
-                        dismiss()
-                    }
-                    .disabled(endTime <= startTime)
+                    saveButton
                 }
             }
             .alert("Delete Event", isPresented: $showDeleteAlert) {
-                Button("Delete This Event Only", role: .destructive) {
-                    addExceptionDate()
-                    dismiss()
-                }
-                Button("Delete All Future Events", role: .destructive) {
-                    removeMasterRepeatingEvent(with: event.seriesId)
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) { }
+                deleteAlertButtons
             } message: {
                 Text("Do you want to delete only this event or all future occurrences?")
             }
+        }
+    }
+    
+    private var eventForm: some View {
+        Form {
+            TextField("Title", text: $title)
+            DatePicker("Date", selection: $eventDate, displayedComponents: .date)
+            DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+            DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+            categoryPicker
+            repeatPicker
+            
+            if case .weekly = repeatOption {
+                WeekdaySelectorView(selectedDays: $selectedWeekdays)
+            }
+            
+            deleteButton
+        }
+    }
+
+    private var categoryPicker: some View {
+        Picker("Category", selection: $category) {
+            ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
+                HStack {
+                    Circle()
+                        .fill(category.color)
+                        .frame(width: 12, height: 12)
+                    Text(category.rawValue.capitalized)
+                }.tag(category)
+            }
+        }
+    }
+
+    private var repeatPicker: some View {
+        Picker("Repeats", selection: $repeatOption) {
+            Text("Never").tag(RepeatOption.none)
+            Text("Daily").tag(RepeatOption.daily)
+            Text("Weekly").tag(RepeatOption.weekly(selectedWeekdays))
+        }
+    }
+
+    private var deleteButton: some View {
+        Button("Delete Event") {
+            showDeleteAlert = true
+        }
+        .foregroundColor(.red)
+    }
+
+    private var saveButton: some View {
+        Button("Save") {
+            guard endTime > startTime else { return }
+            
+            let startOfDay = Calendar.current.startOfDay(for: eventDate)
+            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+            
+            event.title = title
+            event.startTime = startTimeInterval
+            event.duration = endTimeInterval - startTimeInterval
+            event.category = category
+            
+            if case .weekly = repeatOption {
+                event.repeatOption = .weekly(selectedWeekdays)
+            } else {
+                event.repeatOption = repeatOption
+            }
+            
+            saveEvents(selectedDate)
+            dismiss()
+        }
+        .disabled(endTime <= startTime)
+    }
+
+    private var deleteAlertButtons: some View {
+        Group {
+            Button("Delete This Event Only", role: .destructive) {
+                addExceptionDate()
+                dismiss()
+            }
+            Button("Delete All Future Events", role: .destructive) {
+                removeMasterRepeatingEvent(with: event.seriesId)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { }
         }
     }
     
