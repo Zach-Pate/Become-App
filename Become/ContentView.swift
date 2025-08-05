@@ -569,14 +569,9 @@ struct EventTileView: View {
                     let timeOffset = (value.translation.height / hourHeight) * 3600
                     let newStartTime = event.startTime + timeOffset
                     
-                    let velocity = value.predictedEndTranslation.height
-                    if abs(velocity) > 500 {
-                        let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
-                        event.startTime = snappedStartTime
-                    } else {
-                        let preciseStartTime = round(newStartTime / 60) * 60
-                        event.startTime = preciseStartTime
-                    }
+                    // Always snap to the nearest 5-minute increment.
+                    let snappedStartTime = round(newStartTime / snapIncrement) * snapIncrement
+                    event.startTime = snappedStartTime
                     
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     saveEvents()

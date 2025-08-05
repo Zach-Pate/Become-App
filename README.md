@@ -35,9 +35,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Drag the top or bottom handles of an event to adjust its duration.
     *   Long-press an event to edit or delete it.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
-*   **Velocity-Based Snapping:**
-    *   Drag slowly for precise, 1-minute adjustments.
-    *   Drag quickly to snap to 5-minute increments.
+*   **Velocity-Based Snapping:** Events now snap to a 5-minute grid when dragged.
 *   **Haptic Feedback:** The app provides haptic feedback when you're moving or resizing an event.
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
 *   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter.
