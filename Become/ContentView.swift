@@ -1018,12 +1018,6 @@ struct EditEventView: View {
                              of: date)
     }
     
-    private func stringFromDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: date)
-    }
-    
     private func addExceptionDate() {
         var repeatingEvents = loadMasterRepeatingEvents()
         if let index = repeatingEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
@@ -1056,6 +1050,12 @@ struct EditEventView: View {
             UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
     }
+}
+
+private func stringFromDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "h:mm a"
+    return formatter.string(from: date)
 }
 
 struct ContentView_Previews: PreviewProvider {

@@ -63,6 +63,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Fixed a bug that prevented single instances of repeating events from being deleted correctly.
     *   Replaced time wheels with text fields for more precise time entry.
     *   Fixed a bug that prevented events from being created on dates other than the current date.
+    *   Resolved a build failure by moving the `stringFromDate` function to a global scope.
 
 ## Getting Started
 
