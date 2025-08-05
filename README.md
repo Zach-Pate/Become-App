@@ -7,6 +7,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Features
 
 *   **Date Selection:** A horizontal menu at the top of the screen allows you to select different days. The app automatically starts on the current date, which is centered and highlighted in the menu.
+*   **Cross-Day Event Management:** You can now move events to different days. When adding or editing an event, a date picker is available to select the desired day.
 *   **Aesthetic Pop-ups:** The "Add New Event" and "Edit Event" pop-ups are styled to be more visually appealing and no longer take up the entire screen.
 *   **Add New Events:** A "+" button on the date selector bar opens a pop-up where you can create new events with a title, start time, end time, and category.
 *   **Edit and Delete Events:** Long-press on an event to open a pop-up where you can edit its details or delete it.
@@ -27,7 +28,8 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Visual Snap Grid:** A faint grid of 5-minute increments provides a visual guide for event placement.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
-    *   Drag an event to move it.
+    *   Drag an event vertically to move it to a different time.
+    *   Drag the top or bottom handles of an event to adjust its duration.
     *   Long-press an event to edit or delete it.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
 *   **Velocity-Based Snapping:**
