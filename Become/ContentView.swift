@@ -163,8 +163,8 @@ struct ContentView: View {
     private let hourHeight: CGFloat = 52.8
     /// The total number of hours to display in the timeline.
     private let totalHours = 24
-    /// The time increment for snapping events, in seconds (5 minutes).
-    private let snapIncrement: TimeInterval = 5 * 60
+    /// The time increment for snapping events, in seconds (10 minutes).
+    private let snapIncrement: TimeInterval = 10 * 60
 
     // MARK: - Body
     
@@ -623,8 +623,11 @@ struct EventTileView: View {
                                 let timeChange = (heightChange / hourHeight) * 3600
                                 
                                 // Update the start time and duration based on the drag.
-                                event.startTime += timeChange
-                                event.duration -= timeChange
+                                let newStartTime = event.startTime + timeChange
+                                let newDuration = event.duration - timeChange
+                                
+                                event.startTime = round(newStartTime / snapIncrement) * snapIncrement
+                                event.duration = round(newDuration / snapIncrement) * snapIncrement
                             }
                             .onEnded { _ in
                                 // When the drag ends, provide haptic feedback and save the changes.
@@ -647,7 +650,8 @@ struct EventTileView: View {
                                 let timeChange = (heightChange / hourHeight) * 3600
                                 
                                 // Update the duration based on the drag.
-                                event.duration += timeChange
+                                let newDuration = event.duration + timeChange
+                                event.duration = round(newDuration / snapIncrement) * snapIncrement
                             }
                             .onEnded { _ in
                                 // When the drag ends, provide haptic feedback and save the changes.
