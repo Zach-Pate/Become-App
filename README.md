@@ -60,6 +60,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Removed the visible drag handles from event tiles for a cleaner aesthetic.
     *   Fixed a bug where repeating events created for a future date would not be saved correctly.
     *   Fixed event deletion and implemented a conditional alert for repeating events.
+    *   Users can now drag the body of an event tile to reschedule it.
 
 ## Getting Started
 

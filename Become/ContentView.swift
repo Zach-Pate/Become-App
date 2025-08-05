@@ -591,10 +591,6 @@ struct EventTileView: View {
                 editingEvent = event
             }
 
-        // By combining the long-press and drag gestures, we allow the user to either
-        // long-press to edit or drag to move the event.
-        let combined = longPress.sequenced(before: drag)
-
         return ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .fill(event.color.opacity(0.8))
@@ -661,7 +657,10 @@ struct EventTileView: View {
         }
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
-        .gesture(combined)
+        .gesture(drag)
+        .onLongPressGesture(minimumDuration: 0.5) {
+            editingEvent = event
+        }
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
