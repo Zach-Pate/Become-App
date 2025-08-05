@@ -65,6 +65,8 @@ struct DayEvent: Identifiable, Equatable, Codable {
     var category: EventCategory
     /// The rule for repeating the event.
     var repeatOption: RepeatOption = .none
+    /// A set of dates on which a repeating event should not appear.
+    var exceptionDates: Set<Date> = []
     
     var color: Color {
         return category.color
@@ -72,7 +74,7 @@ struct DayEvent: Identifiable, Equatable, Codable {
     
     // Coding keys used for encoding/decoding properties (Color is excluded as it's a computed property).
     enum CodingKeys: String, CodingKey {
-        case id, seriesId, title, startTime, duration, category, repeatOption
+        case id, seriesId, title, startTime, duration, category, repeatOption, exceptionDates
     }
     
     // Custom encoding to convert Color to a Codable format.
@@ -85,6 +87,7 @@ struct DayEvent: Identifiable, Equatable, Codable {
         try container.encode(duration, forKey: .duration)
         try container.encode(category, forKey: .category)
         try container.encode(repeatOption, forKey: .repeatOption)
+        try container.encode(exceptionDates, forKey: .exceptionDates)
     }
     
     // Custom decoding to convert from a Codable format back to Color.
@@ -97,10 +100,11 @@ struct DayEvent: Identifiable, Equatable, Codable {
         duration = try container.decode(TimeInterval.self, forKey: .duration)
         category = try container.decode(EventCategory.self, forKey: .category)
         repeatOption = try container.decode(RepeatOption.self, forKey: .repeatOption)
+        exceptionDates = try container.decode(Set<Date>.self, forKey: .exceptionDates)
     }
     
     // Initializer for creating events without decoding.
-    init(id: UUID = UUID(), seriesId: UUID? = nil, title: String, startTime: TimeInterval, duration: TimeInterval, category: EventCategory, repeatOption: RepeatOption = .none) {
+    init(id: UUID = UUID(), seriesId: UUID? = nil, title: String, startTime: TimeInterval, duration: TimeInterval, category: EventCategory, repeatOption: RepeatOption = .none, exceptionDates: Set<Date> = []) {
         self.id = id
         self.seriesId = seriesId
         self.title = title
@@ -108,6 +112,7 @@ struct DayEvent: Identifiable, Equatable, Codable {
         self.duration = duration
         self.category = category
         self.repeatOption = repeatOption
+        self.exceptionDates = exceptionDates
     }
 }
 
@@ -322,6 +327,12 @@ struct ContentView: View {
 
     private func shouldEventOccur(_ event: DayEvent, on date: Date) -> Bool {
         let calendar = Calendar.current
+        
+        // If the date is in the exception list, don't show the event.
+        if event.exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) {
+            return false
+        }
+        
         let weekday = calendar.component(.weekday, from: date)
         
         switch event.repeatOption {
@@ -792,6 +803,7 @@ struct EditEventView: View {
     @State private var category: EventCategory
     @State private var repeatOption: RepeatOption
     @State private var selectedWeekdays: Set<Weekday>
+    @State private var showDeleteAlert = false
     
     @Environment(\.dismiss) var dismiss
     
@@ -845,16 +857,7 @@ struct EditEventView: View {
                 }
                 
                 Button("Delete Event") {
-                    if let seriesId = event.seriesId {
-                        // If the event is part of a series, delete the master event.
-                        removeMasterRepeatingEvent(with: seriesId)
-                    } else {
-                        // Otherwise, just delete the single instance.
-                        events.removeAll { $0.id == event.id }
-                    }
-                    
-                    saveEvents(selectedDate)
-                    dismiss()
+                    showDeleteAlert = true
                 }
                 .foregroundColor(.red)
             }
@@ -892,6 +895,28 @@ struct EditEventView: View {
                     .disabled(endTime <= startTime)
                 }
             }
+            .alert("Delete Event", isPresented: $showDeleteAlert) {
+                Button("Delete This Event Only", role: .destructive) {
+                    addExceptionDate()
+                    dismiss()
+                }
+                Button("Delete All Future Events", role: .destructive) {
+                    removeMasterRepeatingEvent(with: event.seriesId)
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Do you want to delete only this event or all future occurrences?")
+            }
+        }
+    }
+    
+    private func addExceptionDate() {
+        var repeatingEvents = loadMasterRepeatingEvents()
+        if let index = repeatingEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
+            repeatingEvents[index].exceptionDates.insert(selectedDate)
+            saveMasterRepeatingEvents(repeatingEvents)
+            saveEvents(selectedDate)
         }
     }
     
