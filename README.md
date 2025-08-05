@@ -56,7 +56,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Fixed a crash when deleting a repeating event by safely unwrapping the event's `seriesId`.
     *   Refactored event saving logic to correctly handle both single-day and repeating events.
     *   Added a slide animation to the day-swipe gesture for a more intuitive user experience.
-    *   Resolved a build failure by adding missing helper functions to `EditEventView`.
+    *   Resolved a build failure by moving data persistence functions to their correct scope.
 
 ## Getting Started
 
