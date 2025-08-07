@@ -730,11 +730,8 @@ struct EventTileView: View {
         }
         .clipped()
         .padding(.trailing, 10)
-        .scaleEffect(isLongPressing ? 1.05 : 1.0)
-        .shadow(radius: isLongPressing ? 10 : 0)
         .offset(y: dragOffset.height)
         .gesture(longPressDragGesture)
-        .animation(.spring(), value: isLongPressing)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {

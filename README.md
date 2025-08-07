@@ -33,7 +33,6 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
     *   **Long press and drag** an event vertically to move it to a different time. This prevents accidental drags while scrolling.
-    *   When an event is being dragged, it will scale up and cast a shadow to give it a "lifted" appearance.
     *   Drag the top or bottom handles of an event to adjust its duration.
     *   **Long press without dragging** an event to open the edit view.
 *   **Advanced Gesture Handling:** The app now correctly differentiates between scrolling the timeline and dragging an event, preventing accidental edits and providing a smoother user experience.
