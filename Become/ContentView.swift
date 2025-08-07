@@ -607,18 +607,22 @@ struct EventTileView: View {
                 .fill(event.color.opacity(0.8))
             
             VStack(alignment: .leading, spacing: 4) {
-                if tileHeight >= 20 {
+                // Display text only for events that are 30 minutes or longer.
+                if event.duration >= 1800 {
                     Text(event.title)
                         .font(.headline)
                         .foregroundColor(.white)
-                }
-                if tileHeight >= 40 {
-                    Text("\(formattedTime(draggedStartTime)) - \(formattedTime(draggedEndTime))")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.9))
+
+                    // Display time only for events that are tall enough (roughly 45+ minutes).
+                    if tileHeight >= 40 {
+                        Text("\(formattedTime(draggedStartTime)) - \(formattedTime(draggedEndTime))")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
                 }
             }
-            .padding(8)
+            // Use smaller padding for events under an hour to give text more space.
+            .padding(event.duration < 3600 ? 4 : 8)
             
             // This VStack contains the drag handles for resizing the event.
             VStack {

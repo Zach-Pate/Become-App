@@ -46,6 +46,8 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 
 ## Changelog
 
+*   **August 7, 2025:**
+    *   Improved text rendering on small event tiles to prevent overflow. Tiles for events under 30 minutes no longer display text, and tiles for events between 30 and 60 minutes have smaller padding.
 *   **August 5, 2025:**
     *   Fixed a build failure caused by several SwiftUI compilation errors.
     *   Made the `RepeatOption` enum `Hashable` to allow its use in `Picker` views.
