@@ -331,7 +331,6 @@ struct DayView: View {
     }
     
     private func saveEvents(for date: Date) {
-        let key = dateKey(for: date)
         var masterRepeatingEvents = loadMasterRepeatingEvents()
         let originalMasterEvents = masterRepeatingEvents
 
@@ -1067,7 +1066,7 @@ struct EditEventView: View {
                 showSaveAlert = true
             } else {
                 updateEvent()
-                dismiss()
+                editingEvent = nil
             }
         }
         .disabled(endTime <= startTime)
@@ -1078,18 +1077,18 @@ struct EditEventView: View {
             if event.repeatOption != .none {
                 Button("Delete This Event Only", role: .destructive) {
                     addExceptionDate()
-                    dismiss()
+                    editingEvent = nil
                 }
                 Button("Delete All Future Events", role: .destructive) {
                     if let seriesId = event.seriesId {
                         removeMasterRepeatingEvent(with: seriesId)
                     }
-                    dismiss()
+                    editingEvent = nil
                 }
             } else {
                 Button("Delete", role: .destructive) {
                     removeSingleEvent()
-                    dismiss()
+                    editingEvent = nil
                 }
             }
             Button("Cancel", role: .cancel) { }
