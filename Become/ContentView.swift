@@ -1061,20 +1061,32 @@ struct EditEventView: View {
     // MARK: - Data Persistence
     
     private func updateEvent() {
-        // For both single and repeating events, we now update the master list.
-        var masterEvents = loadMasterRepeatingEvents()
-        if let index = masterEvents.firstIndex(where: { $0.id == event.id }) {
-            masterEvents[index] = event
+        if event.seriesId != nil {
+            // This is an instance of a repeating event.
+            // 1. Add an exception to the master event.
+            var masterEvents = loadMasterRepeatingEvents()
+            if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
+                masterEvents[index].exceptionDates.insert(selectedDate)
+                saveMasterRepeatingEvents(masterEvents)
+            }
+            
+            // 2. Create a new, non-repeating event with the changes.
+            var newEvent = event
+            newEvent.repeatOption = .none
+            
+            var dayEvents = loadEventsForDate(eventDate)
+            dayEvents.append(newEvent)
+            saveEventsForDate(dayEvents, for: eventDate)
+            
         } else {
-            // If it's a single event not in the master list, add it.
-            // This logic might need refinement based on how single vs. repeating events are managed.
+            // This is a single event.
             var dayEvents = loadEventsForDate(eventDate)
             if let index = dayEvents.firstIndex(where: { $0.id == event.id }) {
                 dayEvents[index] = event
                 saveEventsForDate(dayEvents, for: eventDate)
             }
         }
-        saveMasterRepeatingEvents(masterEvents)
+        
         NotificationCenter.default.post(name: .eventsDidChange, object: nil)
     }
 
