@@ -171,30 +171,33 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack {
-            DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
-            
-            TabView(selection: $selectedDate) {
-                ForEach(dateRange, id: \.self) { date in
-                    DayView(
-                        date: date,
-                        editingEvent: $editingEvent,
-                        isDragging: $isDragging
-                    )
-                    .tag(date)
+        ZStack {
+            VStack {
+                DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
+                
+                TabView(selection: $selectedDate) {
+                    ForEach(dateRange, id: \.self) { date in
+                        DayView(
+                            date: date,
+                            editingEvent: $editingEvent,
+                            isDragging: $isDragging
+                        )
+                        .tag(date)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut, value: selectedDate)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: selectedDate)
-        }
-        .navigationTitle(dateFormatter.string(from: selectedDate))
-        .sheet(isPresented: $isAddingEvent) {
-            NewEventView(selectedDate: selectedDate)
-                .presentationDetents([.medium])
+            .navigationTitle(dateFormatter.string(from: selectedDate))
+            
+            PopUpMenu(isPresented: $isAddingEvent) {
+                NewEventView(selectedDate: selectedDate, isPresented: $isAddingEvent)
+            }
         }
         .sheet(item: $editingEvent) { event in
-            EditEventView(event: event, selectedDate: selectedDate)
-                .presentationDetents([.medium])
+            PopUpMenu(isPresented: .constant(true)) {
+                EditEventView(event: event, selectedDate: selectedDate, editingEvent: $editingEvent)
+            }
         }
     }
     
@@ -759,6 +762,7 @@ struct CurrentTimeIndicator: View {
 
 struct NewEventView: View {
     let selectedDate: Date
+    @Binding var isPresented: Bool
     
     @State private var title = ""
     @State private var eventDate = Date()
@@ -768,15 +772,18 @@ struct NewEventView: View {
     @State private var repeatOption: RepeatOption = .none
     @State private var selectedWeekdays: Set<Weekday> = []
     
-    @Environment(\.dismiss) var dismiss
-    
-    init(selectedDate: Date) {
+    init(selectedDate: Date, isPresented: Binding<Bool>) {
         self.selectedDate = selectedDate
+        self._isPresented = isPresented
         _eventDate = State(initialValue: selectedDate)
     }
     
     var body: some View {
-        NavigationView {
+        VStack {
+            Text("New Event")
+                .font(.largeTitle)
+                .padding()
+            
             Form {
                 TextField("Title", text: $title)
                 DatePicker("Date", selection: $eventDate, displayedComponents: .date)
@@ -803,46 +810,38 @@ struct NewEventView: View {
                     WeekdaySelectorView(selectedDays: $selectedWeekdays)
                 }
             }
-            .navigationTitle("New Event")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+            
+            PopUpMenuButtons(
+                onCancel: { isPresented = false },
+                onSave: {
+                    guard endTime > startTime else { return }
+                    
+                    var finalRepeatOption = repeatOption
+                    if case .weekly = finalRepeatOption {
+                        finalRepeatOption = .weekly(selectedWeekdays)
                     }
+                    
+                    let startOfDay = Calendar.current.startOfDay(for: eventDate)
+                    let startTimeInterval = startTime.timeIntervalSince(startOfDay)
+                    let endTimeInterval = endTime.timeIntervalSince(startOfDay)
+                    
+                    let newEvent = DayEvent(
+                        seriesId: finalRepeatOption == .none ? nil : UUID(),
+                        title: title,
+                        startTime: startTimeInterval,
+                        duration: endTimeInterval - startTimeInterval,
+                        category: category,
+                        repeatOption: finalRepeatOption
+                    )
+                    
+                    save(event: newEvent)
+                    isPresented = false
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        guard endTime > startTime else { return }
-                        
-                        var finalRepeatOption = repeatOption
-                        if case .weekly = finalRepeatOption {
-                            finalRepeatOption = .weekly(selectedWeekdays)
-                        }
-
-                        let startOfDay = Calendar.current.startOfDay(for: eventDate)
-                        let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-                        let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-                        
-                        let newEvent = DayEvent(
-                            seriesId: finalRepeatOption == .none ? nil : UUID(),
-                            title: title,
-                            startTime: startTimeInterval,
-                            duration: endTimeInterval - startTimeInterval,
-                            category: category,
-                            repeatOption: finalRepeatOption
-                        )
-                        
-                        save(event: newEvent)
-                        
-                        dismiss()
-                    }
-                    .disabled(endTime <= startTime)
-                }
-            }
-            .onAppear(perform: setupInitialTimes)
-            .onChange(of: eventDate) {
-                updateTimeDates(with: eventDate)
-            }
+            )
+        }
+        .onAppear(perform: setupInitialTimes)
+        .onChange(of: eventDate) {
+            updateTimeDates(with: eventDate)
         }
     }
     
@@ -937,6 +936,7 @@ struct NewEventView: View {
 struct EditEventView: View {
     @State var event: DayEvent
     let selectedDate: Date
+    @Binding var editingEvent: DayEvent?
     
     @State private var title: String
     @State private var eventDate: Date
@@ -947,11 +947,10 @@ struct EditEventView: View {
     @State private var selectedWeekdays: Set<Weekday>
     @State private var showDeleteAlert = false
     
-    @Environment(\.dismiss) var dismiss
-    
-    init(event: DayEvent, selectedDate: Date) {
+    init(event: DayEvent, selectedDate: Date, editingEvent: Binding<DayEvent?>) {
         self._event = State(initialValue: event)
         self.selectedDate = selectedDate
+        self._editingEvent = editingEvent
         
         let startOfDay = Calendar.current.startOfDay(for: selectedDate)
         _title = State(initialValue: event.title)
@@ -970,48 +969,45 @@ struct EditEventView: View {
     
     // Breaking the body into smaller components to avoid compiler timeouts.
     var body: some View {
-        NavigationView {
+        VStack {
+            Text("Edit Event")
+                .font(.largeTitle)
+                .padding()
+            
             eventForm
-            .alert("Save Repeating Event", isPresented: $showSaveAlert) {
-                Button("This Event Only") {
-                    updateSingleInstanceOfRepeatingEvent()
-                    dismiss()
-                }
-                Button("All Future Events") {
-                    updateAllFutureEvents()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Do you want to save changes for this event only, or for all future events in the series?")
-            }
-            .navigationTitle("Edit Event")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+            
+            PopUpMenuButtons(
+                onCancel: { editingEvent = nil },
+                onSave: {
+                    if event.seriesId != nil {
+                        showSaveAlert = true
+                    } else {
+                        updateEvent()
+                        editingEvent = nil
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        if event.seriesId != nil {
-                            showSaveAlert = true
-                        } else {
-                            updateEvent()
-                            dismiss()
-                        }
-                    }
-                    .disabled(endTime <= startTime)
-                }
+            )
+        }
+        .alert("Save Repeating Event", isPresented: $showSaveAlert) {
+            Button("This Event Only") {
+                updateSingleInstanceOfRepeatingEvent()
+                editingEvent = nil
             }
-            .alert("Delete Event", isPresented: $showDeleteAlert) {
-                deleteAlertButtons
-            } message: {
-                if event.repeatOption != .none {
-                    Text("Do you want to delete only this event or all future occurrences?")
-                } else {
-                    Text("Are you sure you want to delete this event?")
-                }
+            Button("All Future Events") {
+                updateAllFutureEvents()
+                editingEvent = nil
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Do you want to save changes for this event only, or for all future events in the series?")
+        }
+        .alert("Delete Event", isPresented: $showDeleteAlert) {
+            deleteAlertButtons
+        } message: {
+            if event.repeatOption != .none {
+                Text("Do you want to delete only this event or all future occurrences?")
+            } else {
+                Text("Are you sure you want to delete this event?")
             }
         }
     }
