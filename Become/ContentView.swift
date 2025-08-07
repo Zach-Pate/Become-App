@@ -649,9 +649,8 @@ struct EventTileView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(event.color.opacity(0.8))
             
-            VStack(alignment: .leading, spacing: 4) {
-                // Display text only for events that are 30 minutes or longer.
-                if event.duration >= 1800 {
+            if event.duration >= 1800 {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(event.title)
                         .font(.headline)
                         .foregroundColor(.white)
@@ -663,9 +662,9 @@ struct EventTileView: View {
                             .foregroundColor(.white.opacity(0.9))
                     }
                 }
+                // Use smaller padding for events under an hour to give text more space.
+                .padding(event.duration < 3600 ? 4 : 8)
             }
-            // Use smaller padding for events under an hour to give text more space.
-            .padding(event.duration < 3600 ? 4 : 8)
             
             // This VStack contains the drag handles for resizing the event.
             VStack {
