@@ -170,25 +170,30 @@ struct ContentView: View {
         return dates
     }
 
+    @State private var swipeDirection: Edge = .leading
+
     var body: some View {
         ZStack {
             VStack {
                 DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
                 
                 ZStack {
-                    TabView(selection: $selectedDate) {
-                        ForEach(dateRange, id: \.self) { date in
-                            DayView(
-                                date: date,
-                                editingEvent: $editingEvent,
-                                isDragging: $isDragging
-                            )
-                            .tag(date)
-                        }
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    DayView(
+                        date: selectedDate,
+                        editingEvent: $editingEvent,
+                        isDragging: $isDragging
+                    )
+                    .id(selectedDate)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: swipeDirection),
+                        removal: .move(edge: swipeDirection == .leading ? .trailing : .leading)
+                    ))
                     
-                    EdgeSwipeView(selectedDate: $selectedDate, dateRange: dateRange)
+                    EdgeSwipeView(
+                        selectedDate: $selectedDate,
+                        dateRange: dateRange,
+                        swipeDirection: $swipeDirection
+                    )
                 }
             }
             .navigationTitle(dateFormatter.string(from: selectedDate))
