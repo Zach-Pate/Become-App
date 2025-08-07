@@ -24,7 +24,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Rest (Mint)
     *   Social (Teal)
     *   Study (Brown)
-    *   Travel (Black)
+    *   Travel (Rust)
     *   Work (Indigo)
     *   Other (Gray)
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule. The time labels are now perfectly centered on their corresponding hour markers.
