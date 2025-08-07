@@ -261,7 +261,10 @@ struct DayView: View {
             .scrollDisabled(isDragging)
             .onAppear {
                 setup()
-                proxy.scrollTo(6, anchor: .top)
+                // Delay the scroll action to ensure the view has rendered.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                    proxy.scrollTo(6, anchor: .top)
+                }
             }
             .onDisappear(perform: cancelTimer)
             .onReceive(NotificationCenter.default.publisher(for: .eventsDidChange)) { _ in
