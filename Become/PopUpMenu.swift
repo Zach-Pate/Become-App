@@ -49,8 +49,9 @@ struct PopUpMenu<Content: View>: View {
     var body: some View {
         if isPresented {
             ZStack {
-                // A semi-transparent background that covers the entire screen.
-                Color.black.opacity(0.4)
+                // A blurred background that covers the entire screen.
+                Rectangle()
+                    .fill(.ultraThinMaterial)
                     .edgesIgnoringSafeArea(.all)
                     .onTapGesture {
                         // Dismiss the pop-up when the background is tapped.

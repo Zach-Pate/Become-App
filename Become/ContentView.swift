@@ -793,8 +793,11 @@ struct NewEventView: View {
                     .cornerRadius(8)
                 
                 DatePicker("Date", selection: $eventDate, displayedComponents: .date)
+                    .datePickerStyle(.compact)
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.compact)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.compact)
                 
                 Picker("Category", selection: $category) {
                     ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
@@ -1026,8 +1029,11 @@ struct EditEventView: View {
                 .cornerRadius(8)
             
             DatePicker("Date", selection: $eventDate, displayedComponents: .date)
+                .datePickerStyle(.compact)
             DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.compact)
             DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                .datePickerStyle(.compact)
             
             categoryPicker
             repeatPicker
