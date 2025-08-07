@@ -6,7 +6,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 
 ## Features
 
-*   **Seamless Day Navigation:** Replaced the manual swipe gesture with a `TabView` for a smooth, animated, and seamless transition between days. The swipe gesture is restricted to the edges of the screen to avoid conflicts with vertical scrolling.
+*   **Seamless Day Navigation:** The app uses a `TabView` for smooth, animated transitions between days. The swipe gesture is restricted to the edges of the screen to avoid conflicts with vertical scrolling.
 *   **Dual-Mode Date Selection:** Navigate between days using either the horizontal menu at the top of the screen or by swiping left and right from the screen edges. The app automatically starts on the current date, which is centered and highlighted in the menu.
 *   **Smart Scroll:** The schedule automatically scrolls to 6 AM when you open the app or switch between days, so you can start planning from the beginning of your day.
 *   **Advanced Repeating Event Logic:** When editing a repeating event, you can now choose to apply your changes to a single instance or to all future events in the series. Dragging and resizing an instance will correctly affect only that single event.
