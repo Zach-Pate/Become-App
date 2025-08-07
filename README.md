@@ -48,6 +48,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Changelog
 
 *   **August 7, 2025:**
+    *   Fixed a bug where the main timeline would not scroll if a gesture started on an event tile.
     *   Fixed a persistent bug where small event tiles would overflow their boundaries.
     *   Fixed a critical bug that caused edits to one repeating event to incorrectly modify all instances in the series.
     *   Implemented a dialog to allow users to edit a single instance of a repeating event or all future occurrences.

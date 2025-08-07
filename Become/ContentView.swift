@@ -585,9 +585,8 @@ struct EventTileView: View {
     @Binding var isDragging: Bool
 
     // --- Gesture States ---
+    @GestureState private var isLongPressing = false
     @State private var dragOffset: CGSize = .zero
-    @State private var dragStartTime: Date? = nil
-    @State private var isLongPressActive = false
 
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
@@ -604,28 +603,35 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        let dragGesture = DragGesture(minimumDistance: 0)
+        let longPressDragGesture = LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+            .updating($isLongPressing) { value, state, transaction in
+                switch value {
+                case .first(true):
+                    state = true
+                    // Use a transaction to disable the default animation.
+                    // This prevents the tile from animating to its new position.
+                    transaction.disablesAnimations = true
+                default:
+                    break
+                }
+            }
             .onChanged { value in
-                // On the first touch, record the start time.
-                if self.dragStartTime == nil {
-                    self.dragStartTime = Date()
-                }
-
-                // If the finger has been held down for 0.3s, activate the long press mode.
-                if !isLongPressActive && Date().timeIntervalSince(self.dragStartTime!) > 0.3 {
-                    isLongPressActive = true
-                    isDragging = true // This disables the main ScrollView.
+                switch value {
+                case .first(true):
+                    // This is the moment the long press is recognized.
+                    isDragging = true // Disables the main ScrollView.
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                }
-
-                // If in long press mode, update the tile's visual offset.
-                if isLongPressActive {
-                    self.dragOffset = value.translation
+                case .second(true, let drag):
+                    // This is when the user is actively dragging.
+                    dragOffset = drag?.translation ?? .zero
+                default:
+                    break
                 }
             }
             .onEnded { value in
-                if isLongPressActive {
-                    let dragDistance = sqrt(pow(value.translation.width, 2) + pow(value.translation.height, 2))
+                if case .second(true, let drag?) = value {
+                    let dragDistance = sqrt(pow(drag.translation.width, 2) + pow(drag.translation.height, 2))
                     
                     // Only act if the gesture was a drag (moved more than 10 points).
                     if dragDistance > 10 {
@@ -636,13 +642,15 @@ struct EventTileView: View {
                         editingEvent = event
                         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                     }
+                } else {
+                    // This handles the case of a long press without any drag attempt.
+                    editingEvent = event
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 }
                 
                 // Reset all gesture-related states.
-                self.dragStartTime = nil
-                self.isLongPressActive = false
-                self.isDragging = false
-                self.dragOffset = .zero
+                isDragging = false
+                dragOffset = .zero
             }
 
         return ZStack(alignment: .topLeading) {
@@ -721,7 +729,7 @@ struct EventTileView: View {
         .clipped()
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
-        .gesture(dragGesture)
+        .gesture(longPressDragGesture)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
