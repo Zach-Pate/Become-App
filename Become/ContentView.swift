@@ -143,102 +143,59 @@ struct WeekdaySelectorView: View {
     }
 }
 
+// Add a notification name for when events are updated.
+extension Notification.Name {
+    static let eventsDidChange = Notification.Name("eventsDidChange")
+}
+
 // MARK: - Main Content View
 
 /// The main view of the application, displaying the daily schedule.
 struct ContentView: View {
-    // MARK: - State Properties
-    
-    /// The array of events for the day.
-    @State private var events: [DayEvent] = []
-    @State private var currentTime: TimeInterval = 0
-    @State private var selectedDate: Date = Date()
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var isAddingEvent = false
     @State private var editingEvent: DayEvent?
-    @State private var timer: Timer?
     @State private var isDragging = false
 
-    // MARK: - View Constants
-    
-    /// The height of a single hour in the timeline view.
-    private let hourHeight: CGFloat = 52.8
-    /// The total number of hours to display in the timeline.
-    private let totalHours = 24
-    /// The time increment for snapping events, in seconds (10 minutes).
-    private let snapIncrement: TimeInterval = 10 * 60
-
-    // MARK: - Body
-    
-    var body: some View {
-        let swipeGesture = DragGesture()
-            .onEnded { value in
-                withAnimation(.spring) {
-                    if value.translation.width < -50 {
-                        // Swipe left to go to the next day
-                        selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
-                    } else if value.translation.width > 50 {
-                        // Swipe right to go to the previous day
-                        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
-                    }
-                }
-            }
-
-        return VStack {
-            DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
-            ScrollViewReader { proxy in
-                ScrollView {
-                    // The ZStack layers the event tiles on top of the timeline background.
-                    ZStack(alignment: .topLeading) {
-                        // The background timeline view.
-                        TimelineView()
-                            .frame(height: hourHeight * CGFloat(totalHours))
-                        
-                        SnapGridView(hourHeight: hourHeight, snapIncrement: snapIncrement)
-                            .frame(height: hourHeight * CGFloat(totalHours))
-
-                        // Iterate over the events and create a view for each one.
-                        ForEach($events) { $event in
-                            EventTileView(event: $event, hourHeight: hourHeight, snapIncrement: snapIncrement, saveEvents: { saveEvents(for: selectedDate) }, editingEvent: $editingEvent, isDragging: $isDragging)
-                                .offset(y: yOffset(for: event.startTime))
-                                .frame(height: height(for: event.duration))
-                                .padding(.leading, 60)
-                        }
-                        
-                        if Calendar.current.isDateInToday(selectedDate) {
-                            CurrentTimeIndicator(hourHeight: hourHeight)
-                                .offset(y: yOffset(for: currentTime))
-                        }
-                    }
-                }
-                .scrollDisabled(isDragging)
-                .onAppear {
-                    proxy.scrollTo(6, anchor: .top)
-                }
-                .onChange(of: selectedDate) { oldValue, newValue in
-                    loadEvents(for: newValue)
-                    proxy.scrollTo(6, anchor: .top)
-                }
+    // A date range for the TabView, covering one year past and one year future.
+    private var dateRange: [Date] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var dates: [Date] = []
+        for i in -365...365 {
+            if let date = calendar.date(byAdding: .day, value: i, to: today) {
+                dates.append(date)
             }
         }
-        .gesture(swipeGesture)
+        return dates
+    }
+
+    var body: some View {
+        VStack {
+            DateSelectorView(selectedDate: $selectedDate, isAddingEvent: $isAddingEvent)
+            
+            TabView(selection: $selectedDate) {
+                ForEach(dateRange, id: \.self) { date in
+                    DayView(
+                        date: date,
+                        editingEvent: $editingEvent,
+                        isDragging: $isDragging
+                    )
+                    .tag(date)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut, value: selectedDate)
+        }
         .navigationTitle(dateFormatter.string(from: selectedDate))
-        .onAppear(perform: setup)
-        .onDisappear(perform: cancelTimer)
-        .sheet(isPresented: $isAddingEvent, onDismiss: {
-            loadEvents(for: selectedDate)
-        }) {
+        .sheet(isPresented: $isAddingEvent) {
             NewEventView(selectedDate: selectedDate)
                 .presentationDetents([.medium])
         }
-        .sheet(item: $editingEvent, onDismiss: {
-            loadEvents(for: selectedDate)
-        }) { event in
-            if let index = events.firstIndex(where: { $0.id == event.id }) {
-                EditEventView(event: $events[index], events: $events, selectedDate: selectedDate, saveEvents: { _ in saveEvents(for: selectedDate) })
-                    .presentationDetents([.medium])
-            }
+        .sheet(item: $editingEvent) { event in
+            EditEventView(event: event, selectedDate: selectedDate)
+                .presentationDetents([.medium])
         }
-        .transition(.slide)
     }
     
     private var dateFormatter: DateFormatter {
@@ -246,12 +203,69 @@ struct ContentView: View {
         formatter.dateStyle = .medium
         return formatter
     }
+}
+
+// MARK: - Day View
+
+struct DayView: View {
+    let date: Date
+    @Binding var editingEvent: DayEvent?
+    @Binding var isDragging: Bool
+    
+    @State private var events: [DayEvent] = []
+    @State private var currentTime: TimeInterval = 0
+    @State private var timer: Timer?
+
+    private let hourHeight: CGFloat = 52.8
+    private let totalHours = 24
+    private let snapIncrement: TimeInterval = 10 * 60
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                ZStack(alignment: .topLeading) {
+                    TimelineView()
+                        .frame(height: hourHeight * CGFloat(totalHours))
+                    
+                    SnapGridView(hourHeight: hourHeight, snapIncrement: snapIncrement)
+                        .frame(height: hourHeight * CGFloat(totalHours))
+
+                    ForEach($events) { $event in
+                        EventTileView(
+                            event: $event,
+                            hourHeight: hourHeight,
+                            snapIncrement: snapIncrement,
+                            saveEvents: { saveEvents(for: date) },
+                            editingEvent: $editingEvent,
+                            isDragging: $isDragging
+                        )
+                        .offset(y: yOffset(for: event.startTime))
+                        .frame(height: height(for: event.duration))
+                        .padding(.leading, 60)
+                    }
+                    
+                    if Calendar.current.isDateInToday(date) {
+                        CurrentTimeIndicator(hourHeight: hourHeight)
+                            .offset(y: yOffset(for: currentTime))
+                    }
+                }
+            }
+            .scrollDisabled(isDragging)
+            .onAppear {
+                setup()
+                proxy.scrollTo(6, anchor: .top)
+            }
+            .onDisappear(perform: cancelTimer)
+            .onReceive(NotificationCenter.default.publisher(for: .eventsDidChange)) { _ in
+                loadEvents(for: date)
+            }
+        }
+    }
 
     // MARK: - Helper Functions
     
     private func setup() {
-        loadEvents(for: selectedDate)
-        // Set up a timer to update the current time every minute.
+        loadEvents(for: date)
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
             updateCurrentTime()
         }
@@ -270,17 +284,11 @@ struct ContentView: View {
         currentTime = TimeInterval(components.hour! * 3600 + components.minute! * 60)
     }
     
-    /// Calculates the vertical offset for an event tile.
-    /// - Parameter startTime: The start time of the event.
-    /// - Returns: The vertical offset in points.
     private func yOffset(for startTime: TimeInterval) -> CGFloat {
         let hours = startTime / 3600
         return CGFloat(hours) * hourHeight
     }
     
-    /// Calculates the height for an event tile.
-    /// - Parameter duration: The duration of the event in seconds.
-    /// - Returns: The height of the tile in points.
     private func height(for duration: TimeInterval) -> CGFloat {
         let hours = duration / 3600
         return CGFloat(hours) * hourHeight
@@ -308,21 +316,17 @@ struct ContentView: View {
         }
     }
     
-    /// Saves the current events to UserDefaults.
     private func saveEvents(for date: Date) {
         let key = dateKey(for: date)
-        
-        // Separate single-day and repeating events.
         let singleDayEvents = events.filter { $0.repeatOption == .none }
         let repeatingEvents = events.filter { $0.repeatOption != .none }
         
-        // Save single-day events to their specific date key.
         if let encoded = try? JSONEncoder().encode(singleDayEvents) {
             UserDefaults.standard.set(encoded, forKey: key)
         }
         
-        // Update the master list of repeating events.
         var masterRepeatingEvents = loadMasterRepeatingEvents()
+.
         for event in repeatingEvents {
             if let index = masterRepeatingEvents.firstIndex(where: { $0.id == event.id }) {
                 masterRepeatingEvents[index] = event
@@ -331,14 +335,13 @@ struct ContentView: View {
             }
         }
         saveMasterRepeatingEvents(masterRepeatingEvents)
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
     }
     
-    /// Loads events from UserDefaults. If no data is found, it initializes an empty array.
     private func loadEvents(for date: Date) {
         let key = dateKey(for: date)
         var allEvents: [DayEvent] = []
         
-        // Load single-day events
         if let data = UserDefaults.standard.data(forKey: key) {
             do {
                 let decodedEvents = try JSONDecoder().decode([DayEvent].self, from: data)
@@ -348,7 +351,6 @@ struct ContentView: View {
             }
         }
         
-        // Load and filter repeating events
         if let data = UserDefaults.standard.data(forKey: "masterRepeatingEvents") {
             do {
                 let repeatingEvents = try JSONDecoder().decode([DayEvent].self, from: data)
@@ -366,14 +368,10 @@ struct ContentView: View {
 
     private func shouldEventOccur(_ event: DayEvent, on date: Date) -> Bool {
         let calendar = Calendar.current
-        
-        // If the date is in the exception list, don't show the event.
         if event.exceptionDates.contains(where: { calendar.isDate($0, inSameDayAs: date) }) {
             return false
         }
-        
         let weekday = calendar.component(.weekday, from: date)
-        
         switch event.repeatOption {
         case .none:
             return false
