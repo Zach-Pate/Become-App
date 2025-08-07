@@ -962,6 +962,19 @@ struct EditEventView: View {
     var body: some View {
         NavigationView {
             eventForm
+            .alert("Save Repeating Event", isPresented: $showSaveAlert) {
+                Button("This Event Only") {
+                    updateSingleInstanceOfRepeatingEvent()
+                    dismiss()
+                }
+                Button("All Future Events") {
+                    updateAllFutureEvents()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Do you want to save changes for this event only, or for all future events in the series?")
+            }
             .navigationTitle("Edit Event")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -970,7 +983,15 @@ struct EditEventView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    saveButton
+                    Button("Save") {
+                        if event.seriesId != nil {
+                            showSaveAlert = true
+                        } else {
+                            updateEvent()
+                            dismiss()
+                        }
+                    }
+                    .disabled(endTime <= startTime)
                 }
             }
             .alert("Delete Event", isPresented: $showDeleteAlert) {
@@ -1029,112 +1050,9 @@ struct EditEventView: View {
         }
         .foregroundColor(.red)
     }
-
-    @State private var showSaveAlert = false
-
-    // ... (inside body)
-            .alert("Save Repeating Event", isPresented: $showSaveAlert) {
-                Button("This Event Only") {
-                    updateSingleInstanceOfRepeatingEvent()
-                    dismiss()
-                }
-                Button("All Future Events") {
-                    updateAllFutureEvents()
-                    dismiss()
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Do you want to save changes for this event only, or for all future events in the series?")
-            }
-    // ... (inside saveButton)
-        Button("Save") {
-            if event.seriesId != nil {
-                showSaveAlert = true
-            } else {
-                updateEvent()
-                dismiss()
-            }
-        }
-    // ... (new functions in EditEventView)
-    private func updateSingleInstanceOfRepeatingEvent() {
-        // This is an instance of a repeating event.
-        // 1. Add an exception to the master event.
-        var masterEvents = loadMasterRepeatingEvents()
-        if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
-            masterEvents[index].exceptionDates.insert(selectedDate)
-            saveMasterRepeatingEvents(masterEvents)
-        }
-        
-        // 2. Create a new, non-repeating event with the changes.
-        var newEvent = event
-        let startOfDay = Calendar.current.startOfDay(for: eventDate)
-        newEvent.startTime = startTime.timeIntervalSince(startOfDay)
-        newEvent.duration = endTime.timeIntervalSince(startTime)
-        newEvent.title = title
-        newEvent.category = category
-        newEvent.repeatOption = .none
-        newEvent.seriesId = nil // It's now a standalone event.
-        
-        var dayEvents = loadEventsForDate(eventDate)
-        dayEvents.append(newEvent)
-        saveEventsForDate(dayEvents, for: eventDate)
-        
-        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
-    }
-
-    private func updateAllFutureEvents() {
-        var masterEvents = loadMasterRepeatingEvents()
-        if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
-            let startOfDay = Calendar.current.startOfDay(for: eventDate)
-            masterEvents[index].startTime = startTime.timeIntervalSince(startOfDay)
-            masterEvents[index].duration = endTime.timeIntervalSince(startTime)
-            masterEvents[index].title = title
-            masterEvents[index].category = category
-            if case .weekly = repeatOption {
-                masterEvents[index].repeatOption = .weekly(selectedWeekdays)
-            } else {
-                masterEvents[index].repeatOption = repeatOption
-            }
-            saveMasterRepeatingEvents(masterEvents)
-            NotificationCenter.default.post(name: .eventsDidChange, object: nil)
-        }
-    }
-
-    private func updateEvent() {
-        // This function now only handles single events or creating new repeating events.
-        let startOfDay = Calendar.current.startOfDay(for: eventDate)
-        event.startTime = startTime.timeIntervalSince(startOfDay)
-        event.duration = endTime.timeIntervalSince(startTime)
-        event.title = title
-        event.category = category
-        if case .weekly = repeatOption {
-            event.repeatOption = .weekly(selectedWeekdays)
-        } else {
-            event.repeatOption = repeatOption
-        }
-
-        if event.repeatOption != .none && event.seriesId == nil {
-            // This was a single event that is now a repeating event.
-            event.seriesId = UUID()
-            var masterEvents = loadMasterRepeatingEvents()
-            masterEvents.append(event)
-            saveMasterRepeatingEvents(masterEvents)
-            
-            // Remove the old single event
-            var dayEvents = loadEventsForDate(selectedDate)
-            dayEvents.removeAll { $0.id == event.id }
-            saveEventsForDate(dayEvents, for: selectedDate)
-
-        } else {
-            // This is a single event that was and remains a single event.
-            var dayEvents = loadEventsForDate(eventDate)
-            if let index = dayEvents.firstIndex(where: { $0.id == event.id }) {
-                dayEvents[index] = event
-                saveEventsForDate(dayEvents, for: eventDate)
-            }
-        }
-        
-        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
+    
+    private var saveButton: some View {
+        Text("") // This view is now managed in the toolbar.
     }
 
     private func addExceptionDate() {
