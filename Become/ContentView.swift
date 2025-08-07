@@ -326,24 +326,42 @@ struct DayView: View {
     
     private func saveEvents(for date: Date) {
         let key = dateKey(for: date)
-        let singleDayEvents = events.filter { $0.repeatOption == .none }
-        let repeatingEvents = events.filter { $0.repeatOption != .none }
-        
-        if let encoded = try? JSONEncoder().encode(singleDayEvents) {
-            UserDefaults.standard.set(encoded, forKey: key)
-        }
-        
         var masterRepeatingEvents = loadMasterRepeatingEvents()
+        let originalMasterEvents = masterRepeatingEvents
 
-        for event in repeatingEvents {
-            if let index = masterRepeatingEvents.firstIndex(where: { $0.id == event.id }) {
-                masterRepeatingEvents[index] = event
-            } else {
-                masterRepeatingEvents.append(event)
+        var singleEventsForDay = self.events.filter { $0.repeatOption == .none }
+        let repeatingOccurrences = self.events.filter { $0.repeatOption != .none }
+        var mastersNeedSaving = false
+
+        for occurrence in repeatingOccurrences {
+            if let masterEvent = originalMasterEvents.first(where: { $0.seriesId == occurrence.seriesId }) {
+                if occurrence.startTime != masterEvent.startTime || occurrence.duration != masterEvent.duration {
+                    if let masterIndex = masterRepeatingEvents.firstIndex(where: { $0.seriesId == occurrence.seriesId }) {
+                        masterRepeatingEvents[masterIndex].exceptionDates.insert(date)
+                        mastersNeedSaving = true
+                    }
+                    var newSingleEvent = occurrence
+                    newSingleEvent.repeatOption = .none
+                    newSingleEvent.seriesId = nil
+                    singleEventsForDay.append(newSingleEvent)
+                }
             }
         }
-        saveMasterRepeatingEvents(masterRepeatingEvents)
+
+        saveEventsForDate(singleEventsForDay, for: date)
+
+        if mastersNeedSaving {
+            saveMasterRepeatingEvents(masterRepeatingEvents)
+        }
+
         NotificationCenter.default.post(name: .eventsDidChange, object: nil)
+    }
+    
+    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
+        let key = dateKey(for: date)
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
     }
     
     private func loadEvents(for date: Date) {
@@ -866,6 +884,7 @@ struct NewEventView: View {
             repeatingEvents.append(event)
             saveMasterRepeatingEvents(repeatingEvents)
         }
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
     }
     
     private func loadEventsForDate(_ date: Date) -> [DayEvent] {
@@ -1011,76 +1030,103 @@ struct EditEventView: View {
         .foregroundColor(.red)
     }
 
-    private var saveButton: some View {
-        Button("Save") {
-            guard endTime > startTime else { return }
-            
-            let startOfDay = Calendar.current.startOfDay(for: eventDate)
-            let startTimeInterval = startTime.timeIntervalSince(startOfDay)
-            let endTimeInterval = endTime.timeIntervalSince(startOfDay)
-            
-            event.title = title
-            event.startTime = startTimeInterval
-            event.duration = endTimeInterval - startTimeInterval
-            event.category = category
-            
-            if case .weekly = repeatOption {
-                event.repeatOption = .weekly(selectedWeekdays)
-            } else {
-                event.repeatOption = repeatOption
+    @State private var showSaveAlert = false
+
+    // ... (inside body)
+            .alert("Save Repeating Event", isPresented: $showSaveAlert) {
+                Button("This Event Only") {
+                    updateSingleInstanceOfRepeatingEvent()
+                    dismiss()
+                }
+                Button("All Future Events") {
+                    updateAllFutureEvents()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Do you want to save changes for this event only, or for all future events in the series?")
             }
-            
-            updateEvent()
-            dismiss()
+    // ... (inside saveButton)
+        Button("Save") {
+            if event.seriesId != nil {
+                showSaveAlert = true
+            } else {
+                updateEvent()
+                dismiss()
+            }
         }
-        .disabled(endTime <= startTime)
+    // ... (new functions in EditEventView)
+    private func updateSingleInstanceOfRepeatingEvent() {
+        // This is an instance of a repeating event.
+        // 1. Add an exception to the master event.
+        var masterEvents = loadMasterRepeatingEvents()
+        if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
+            masterEvents[index].exceptionDates.insert(selectedDate)
+            saveMasterRepeatingEvents(masterEvents)
+        }
+        
+        // 2. Create a new, non-repeating event with the changes.
+        var newEvent = event
+        let startOfDay = Calendar.current.startOfDay(for: eventDate)
+        newEvent.startTime = startTime.timeIntervalSince(startOfDay)
+        newEvent.duration = endTime.timeIntervalSince(startTime)
+        newEvent.title = title
+        newEvent.category = category
+        newEvent.repeatOption = .none
+        newEvent.seriesId = nil // It's now a standalone event.
+        
+        var dayEvents = loadEventsForDate(eventDate)
+        dayEvents.append(newEvent)
+        saveEventsForDate(dayEvents, for: eventDate)
+        
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
     }
 
-    private var deleteAlertButtons: some View {
-        Group {
-            if event.repeatOption != .none {
-                Button("Delete This Event Only", role: .destructive) {
-                    addExceptionDate()
-                    dismiss()
-                }
-                Button("Delete All Future Events", role: .destructive) {
-                    if let seriesId = event.seriesId {
-                        removeMasterRepeatingEvent(with: seriesId)
-                    }
-                    dismiss()
-                }
+    private func updateAllFutureEvents() {
+        var masterEvents = loadMasterRepeatingEvents()
+        if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
+            let startOfDay = Calendar.current.startOfDay(for: eventDate)
+            masterEvents[index].startTime = startTime.timeIntervalSince(startOfDay)
+            masterEvents[index].duration = endTime.timeIntervalSince(startTime)
+            masterEvents[index].title = title
+            masterEvents[index].category = category
+            if case .weekly = repeatOption {
+                masterEvents[index].repeatOption = .weekly(selectedWeekdays)
             } else {
-                Button("Delete", role: .destructive) {
-                    removeSingleEvent()
-                    dismiss()
-                }
+                masterEvents[index].repeatOption = repeatOption
             }
-            Button("Cancel", role: .cancel) { }
+            saveMasterRepeatingEvents(masterEvents)
+            NotificationCenter.default.post(name: .eventsDidChange, object: nil)
         }
     }
-    
-    // MARK: - Data Persistence
-    
+
     private func updateEvent() {
-        if event.seriesId != nil {
-            // This is an instance of a repeating event.
-            // 1. Add an exception to the master event.
-            var masterEvents = loadMasterRepeatingEvents()
-            if let index = masterEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
-                masterEvents[index].exceptionDates.insert(selectedDate)
-                saveMasterRepeatingEvents(masterEvents)
-            }
-            
-            // 2. Create a new, non-repeating event with the changes.
-            var newEvent = event
-            newEvent.repeatOption = .none
-            
-            var dayEvents = loadEventsForDate(eventDate)
-            dayEvents.append(newEvent)
-            saveEventsForDate(dayEvents, for: eventDate)
-            
+        // This function now only handles single events or creating new repeating events.
+        let startOfDay = Calendar.current.startOfDay(for: eventDate)
+        event.startTime = startTime.timeIntervalSince(startOfDay)
+        event.duration = endTime.timeIntervalSince(startTime)
+        event.title = title
+        event.category = category
+        if case .weekly = repeatOption {
+            event.repeatOption = .weekly(selectedWeekdays)
         } else {
-            // This is a single event.
+            event.repeatOption = repeatOption
+        }
+
+        if event.repeatOption != .none && event.seriesId == nil {
+            // This was a single event that is now a repeating event.
+            event.seriesId = UUID()
+            var masterEvents = loadMasterRepeatingEvents()
+            masterEvents.append(event)
+            saveMasterRepeatingEvents(masterEvents)
+            
+            // Remove the old single event
+            var dayEvents = loadEventsForDate(selectedDate)
+            dayEvents.removeAll { $0.id == event.id }
+            saveEventsForDate(dayEvents, for: selectedDate)
+
+        } else {
+            // This is a single event that was and remains a single event.
             var dayEvents = loadEventsForDate(eventDate)
             if let index = dayEvents.firstIndex(where: { $0.id == event.id }) {
                 dayEvents[index] = event

@@ -9,7 +9,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Seamless Day Navigation:** Replaced the manual swipe gesture with a `TabView` for a smooth, animated, and seamless transition between days. This also resolves gesture conflicts with event tiles.
 *   **Dual-Mode Date Selection:** Navigate between days using either the horizontal menu at the top of the screen or by swiping left and right. The app automatically starts on the current date, which is centered and highlighted in the menu.
 *   **Smart Scroll:** The schedule automatically scrolls to 6 AM when you open the app or switch between days, so you can start planning from the beginning of your day.
-*   **Repeating Events:** Set events to repeat daily or on specific days of the week. Individual instances of repeating events can be edited without affecting the entire series.
+*   **Advanced Repeating Event Logic:** When editing a repeating event, you can now choose to apply your changes to a single instance or to all future events in the series. Dragging and resizing an instance will correctly affect only that single event.
 *   **Cross-Day Event Management:** You can now move events to different days. When adding or editing an event, a date picker is available to select the desired day.
 *   **Aesthetic Pop-ups:** The "Add New Event" and "Edit Event" pop-ups are styled to be more visually appealing and no longer take up the entire screen.
 *   **Add New Events:** A "+" button on the date selector bar opens a pop-up where you can create new events with a title, start time, end time, and category.
@@ -48,6 +48,10 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Changelog
 
 *   **August 7, 2025:**
+    *   Fixed all gesture-related bugs, ensuring scrolling, dragging, and editing work reliably and intuitively.
+    *   Implemented a dialog to allow users to edit a single instance of a repeating event or all future occurrences.
+    *   Corrected a critical bug that caused edits to one repeating event to incorrectly modify all instances in the series.
+    *   Fixed a bug that prevented the timeline from updating immediately after a new event was created.
     *   Enabled the editing of individual instances of repeating events without affecting the entire series.
     *   Added significant haptic feedback when triggering the edit view for an event.
     *   Implemented a "long press to drag" gesture on event tiles to prioritize scrolling and prevent accidental moves. A long press without dragging now opens the edit view.
