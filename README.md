@@ -38,7 +38,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Advanced Gesture Handling:** The app now correctly differentiates between scrolling the timeline and dragging an event, preventing accidental edits and providing a smoother user experience.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
 *   **Velocity-Based Snapping:** Events now snap to a 10-minute grid when dragged or resized.
-*   **Haptic Feedback:** The app provides haptic feedback when you're moving or resizing an event.
+*   **Haptic Feedback:** The app provides haptic feedback when you're moving, resizing, or preparing to edit an event. A significant haptic feedback is provided when the edit view is triggered.
 *   **Dynamic Tile Sizing:** Event tiles are sized proportionately to their duration.
 *   **Adaptive Tile Content:** The event title and time are hidden on smaller tiles to avoid clutter and ensure the tile boundaries are respected.
 *   **Timezone-Aware:** Event times are displayed accurately in the user's local timezone.
@@ -48,6 +48,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Changelog
 
 *   **August 7, 2025:**
+    *   Added significant haptic feedback when triggering the edit view for an event.
     *   Implemented a "long press to drag" gesture on event tiles to prioritize scrolling and prevent accidental moves. A long press without dragging now opens the edit view.
     *   Overhauled the day navigation with a seamless, animated swipe gesture using `TabView`. This resolves gesture conflicts and improves the user experience.
     *   Changed the "Travel" event category color to a custom rust color for better visibility and contrast in both light and dark modes.

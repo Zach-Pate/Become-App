@@ -557,7 +557,7 @@ struct EventTileView: View {
 
     // --- Gesture States ---
     // Tracks the offset of the tile during a drag gesture.
-    @GestureState private var dragOffset: CGSize = .zero
+    @State private var dragOffset: CGSize = .zero
     // Tracks whether a drag has actually occurred, to differentiate from a simple long press.
     @State private var hasDragged = false
 
@@ -584,21 +584,19 @@ struct EventTileView: View {
                 switch value {
                 case .first(true):
                     // The long press has been recognized.
-                    isDragging = true
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    if !isDragging {
+                        isDragging = true
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
                 case .second(true, let drag):
                     // The user is now dragging after the long press.
-                    // We mark that a drag has occurred.
-                    hasDragged = true
-                    // The drag gesture's state is managed by the @GestureState property wrapper,
-                    // so we don't need to manually update a state variable here.
-                    break
+                    self.hasDragged = true
+                    self.dragOffset = drag?.translation ?? .zero
                 default:
                     break
                 }
             }
             .onEnded { value in
-                // The gesture has ended (finger lifted).
                 isDragging = false
                 
                 if hasDragged {
@@ -608,9 +606,13 @@ struct EventTileView: View {
                 } else {
                     // If the user didn't drag, it was a simple long press. Show the edit view.
                     editingEvent = event
+                    // Provide a significant haptic feedback to indicate the edit action.
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 }
-                // Reset the drag state for the next gesture.
-                hasDragged = false
+                
+                // Reset the gesture states for the next interaction.
+                self.hasDragged = false
+                self.dragOffset = .zero
             }
 
         return ZStack(alignment: .topLeading) {
