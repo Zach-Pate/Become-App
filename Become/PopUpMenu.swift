@@ -64,7 +64,7 @@ struct PopUpMenu<Content: View>: View {
                 }
                 .padding()
                 .background(Color(UIColor.systemBackground))
-                .cornerRadius(12)
+                .cornerRadius(25)
                 .shadow(radius: 20)
                 .padding(.horizontal, 30)
                 .frame(maxHeight: 550)
