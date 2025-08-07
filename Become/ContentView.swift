@@ -782,11 +782,16 @@ struct NewEventView: View {
     
     var body: some View {
         VStack {
-            Form {
+            VStack(spacing: 15) {
                 TextField("Title", text: $title)
+                    .padding()
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(8)
+                
                 DatePicker("Date", selection: $eventDate, displayedComponents: .date)
                 DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
                 DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+                
                 Picker("Category", selection: $category) {
                     ForEach(EventCategory.allCases.sorted(by: { $0.rawValue < $1.rawValue }).filter { $0 != .other } + [.other], id: \.self) { category in
                         HStack {
@@ -797,17 +802,20 @@ struct NewEventView: View {
                         }.tag(category)
                     }
                 }
+                .pickerStyle(.menu)
                 
                 Picker("Repeats", selection: $repeatOption) {
                     Text("Never").tag(RepeatOption.none)
                     Text("Daily").tag(RepeatOption.daily)
                     Text("Weekly").tag(RepeatOption.weekly(selectedWeekdays))
                 }
+                .pickerStyle(.menu)
                 
                 if case .weekly = repeatOption {
                     WeekdaySelectorView(selectedDays: $selectedWeekdays)
                 }
             }
+            .padding(.vertical)
             
             PopUpMenuButtons(
                 onCancel: { isPresented = false },
@@ -1007,11 +1015,16 @@ struct EditEventView: View {
     }
     
     private var eventForm: some View {
-        Form {
+        VStack(spacing: 15) {
             TextField("Title", text: $title)
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(8)
+            
             DatePicker("Date", selection: $eventDate, displayedComponents: .date)
             DatePicker("Start Time", selection: $startTime, displayedComponents: .hourAndMinute)
             DatePicker("End Time", selection: $endTime, displayedComponents: .hourAndMinute)
+            
             categoryPicker
             repeatPicker
             
@@ -1021,6 +1034,7 @@ struct EditEventView: View {
             
             deleteButton
         }
+        .padding(.vertical)
     }
 
     private var categoryPicker: some View {

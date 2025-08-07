@@ -65,7 +65,8 @@ struct PopUpMenu<Content: View>: View {
                 .background(Color(UIColor.systemBackground))
                 .cornerRadius(12)
                 .shadow(radius: 20)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 30)
+                .frame(maxHeight: 550)
             }
             .zIndex(1) // Ensure the pop-up is on top of other views.
         }

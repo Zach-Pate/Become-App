@@ -11,7 +11,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Smart Scroll:** The schedule automatically scrolls to 6 AM when you open the app or switch between days, so you can start planning from the beginning of your day.
 *   **Advanced Repeating Event Logic:** When editing a repeating event, you can now choose to apply your changes to a single instance or to all future events in the series. Dragging and resizing an instance will correctly affect only that single event.
 *   **Cross-Day Event Management:** You can now move events to different days. When adding or editing an event, a date picker is available to select the desired day.
-*   **Aesthetic Pop-ups:** The "Add New Event" and "Edit Event" pop-ups are custom-built, title-less, square boxes that appear in the middle of the screen. They are theme-aware and feature compact, custom-styled save and cancel buttons.
+*   **Aesthetic Pop-ups:** The "Add New Event" and "Edit Event" pop-ups are custom-built, minimalist boxes that appear in the middle of the screen. They are theme-aware and feature compact, custom-styled save and cancel buttons.
 *   **Add New Events:** A "+" button on the date selector bar opens a pop-up where you can create new events with a title, start time, end time, and category.
 *   **Edit and Delete Events:** Long-press on an event to open a pop-up where you can edit its details or delete it. When deleting a repeating event, you can choose to delete just that single instance or the entire series.
 *   **Event Categories:** Events can be assigned to categories, each with a unique color. The category picker is now sorted alphabetically and includes a new "Study" category.
