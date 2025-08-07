@@ -779,10 +779,6 @@ struct NewEventView: View {
     
     var body: some View {
         VStack {
-            Text("New Event")
-                .font(.largeTitle)
-                .padding()
-            
             Form {
                 TextField("Title", text: $title)
                 DatePicker("Date", selection: $eventDate, displayedComponents: .date)
@@ -969,10 +965,6 @@ struct EditEventView: View {
     // Breaking the body into smaller components to avoid compiler timeouts.
     var body: some View {
         VStack {
-            Text("Edit Event")
-                .font(.largeTitle)
-                .padding()
-            
             eventForm
             
             PopUpMenuButtons(

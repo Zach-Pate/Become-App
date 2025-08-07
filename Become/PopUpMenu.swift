@@ -12,24 +12,25 @@ struct PopUpMenuButtons: View {
             // The cancel button.
             Button(action: onCancel) {
                 Image(systemName: "xmark")
-                    .font(.title2)
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding()
+                    .padding(12)
                     .background(Color.red)
                     .clipShape(Circle())
             }
-            .shadow(radius: 5)
+            .shadow(radius: 4)
             
             // The save button.
             Button(action: onSave) {
                 Image(systemName: "checkmark")
-                    .font(.title2)
+                    .font(.headline)
                     .foregroundColor(.white)
-                    .padding()
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 20)
                     .background(Color.blue)
                     .clipShape(Capsule())
             }
-            .shadow(radius: 5)
+            .shadow(radius: 4)
         }
         .padding(.trailing)
     }
@@ -62,9 +63,9 @@ struct PopUpMenu<Content: View>: View {
                 }
                 .padding()
                 .background(Color(UIColor.systemBackground))
-                .cornerRadius(20)
+                .cornerRadius(12)
                 .shadow(radius: 20)
-                .padding(40)
+                .padding(.horizontal, 20)
             }
             .zIndex(1) // Ensure the pop-up is on top of other views.
         }
