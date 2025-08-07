@@ -32,9 +32,9 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 *   **Visual Snap Grid:** A faint grid of 10-minute increments provides a visual guide for event placement.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.
 *   **Intuitive, Real-Time Gestures:**
-    *   Drag an event vertically to move it to a different time. The time display on the tile updates in real-time as you drag.
+    *   **Long press and drag** an event vertically to move it to a different time. This prevents accidental drags while scrolling.
     *   Drag the top or bottom handles of an event to adjust its duration.
-    *   Long-press an event to edit or delete it.
+    *   **Long press without dragging** an event to open the edit view.
 *   **Advanced Gesture Handling:** The app now correctly differentiates between scrolling the timeline and dragging an event, preventing accidental edits and providing a smoother user experience.
 *   **Smooth Dragging:** Events now move and resize smoothly with your finger, without any jitter. The time display on the tile also updates in real-time.
 *   **Velocity-Based Snapping:** Events now snap to a 10-minute grid when dragged or resized.
@@ -48,6 +48,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
 ## Changelog
 
 *   **August 7, 2025:**
+    *   Implemented a "long press to drag" gesture on event tiles to prioritize scrolling and prevent accidental moves. A long press without dragging now opens the edit view.
     *   Overhauled the day navigation with a seamless, animated swipe gesture using `TabView`. This resolves gesture conflicts and improves the user experience.
     *   Changed the "Travel" event category color to a custom rust color for better visibility and contrast in both light and dark modes.
     *   Improved text rendering on small event tiles to prevent overflow. Tiles for events under 30 minutes no longer display text, and tiles for events between 30 and 60 minutes have smaller padding.

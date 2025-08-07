@@ -554,16 +554,20 @@ struct EventTileView: View {
     let saveEvents: () -> Void
     @Binding var editingEvent: DayEvent?
     @Binding var isDragging: Bool
-    
-    @State private var currentDragOffset: CGSize = .zero
-    @GestureState private var isLongPressingForEdit: Bool = false
-    
+
+    // --- Gesture States ---
+    // Tracks the offset of the tile during a drag gesture.
+    @GestureState private var dragOffset: CGSize = .zero
+    // Tracks whether a drag has actually occurred, to differentiate from a simple long press.
+    @State private var hasDragged = false
+
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
     }
     
+    // Calculates the final start time after a drag, including the snap-to-grid logic.
     private var draggedStartTime: TimeInterval {
-        let timeOffset = (currentDragOffset.height / hourHeight) * 3600
+        let timeOffset = (dragOffset.height / hourHeight) * 3600
         let newStartTime = event.startTime + timeOffset
         return round(newStartTime / snapIncrement) * snapIncrement
     }
@@ -573,32 +577,41 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        let longPressGesture = LongPressGesture(minimumDuration: 0.5)
-            .updating($isLongPressingForEdit) { value, state, _ in
-                state = value
-            }
-            .onEnded { _ in
-                editingEvent = event
-            }
-
-        let dragGesture = DragGesture()
+        // This combined gesture allows us to distinguish between a long press to edit and a long press to drag.
+        let longPressDragGesture = LongPressGesture(minimumDuration: 0.3)
+            .sequenced(before: DragGesture())
             .onChanged { value in
-                if !isLongPressingForEdit {
+                switch value {
+                case .first(true):
+                    // The long press has been recognized.
                     isDragging = true
-                    currentDragOffset = value.translation
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                case .second(true, let drag):
+                    // The user is now dragging after the long press.
+                    // We mark that a drag has occurred.
+                    hasDragged = true
+                    // The drag gesture's state is managed by the @GestureState property wrapper,
+                    // so we don't need to manually update a state variable here.
+                    break
+                default:
+                    break
                 }
             }
             .onEnded { value in
-                if !isLongPressingForEdit {
-                    event.startTime = draggedStartTime
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    saveEvents()
-                }
+                // The gesture has ended (finger lifted).
                 isDragging = false
-                currentDragOffset = .zero
+                
+                if hasDragged {
+                    // If the user dragged, update the event's start time.
+                    event.startTime = draggedStartTime
+                    saveEvents()
+                } else {
+                    // If the user didn't drag, it was a simple long press. Show the edit view.
+                    editingEvent = event
+                }
+                // Reset the drag state for the next gesture.
+                hasDragged = false
             }
-
-        let combinedGesture = longPressGesture.simultaneously(with: dragGesture)
 
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 8)
@@ -676,8 +689,8 @@ struct EventTileView: View {
         }
         .clipped()
         .padding(.trailing, 10)
-        .offset(y: currentDragOffset.height)
-        .gesture(combinedGesture)
+        .offset(y: dragOffset.height)
+        .gesture(longPressDragGesture)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
