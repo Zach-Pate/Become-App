@@ -334,7 +334,7 @@ struct DayView: View {
         }
         
         var masterRepeatingEvents = loadMasterRepeatingEvents()
-.
+
         for event in repeatingEvents {
             if let index = masterRepeatingEvents.firstIndex(where: { $0.id == event.id }) {
                 masterRepeatingEvents[index] = event
