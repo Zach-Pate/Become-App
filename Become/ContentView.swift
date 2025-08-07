@@ -43,7 +43,7 @@ enum EventCategory: String, CaseIterable, Codable {
         case .rest: return .mint
         case .social: return .teal
         case .study: return .brown
-        case .travel: return .cyan
+        case .travel: return .black
         case .work: return .indigo
         case .other: return .gray
         }
