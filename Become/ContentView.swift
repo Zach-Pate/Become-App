@@ -183,10 +183,10 @@ struct ContentView: View {
                             isDragging: $isDragging
                         )
                         .tag(date)
+                        .onEdgeSwipe(selectedDate: $selectedDate, dateRange: dateRange)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut, value: selectedDate)
             }
             .navigationTitle(dateFormatter.string(from: selectedDate))
             
