@@ -196,10 +196,14 @@ struct ContentView: View {
             PopUpMenu(isPresented: $isAddingEvent) {
                 NewEventView(selectedDate: selectedDate, isPresented: $isAddingEvent)
             }
-        }
-        .sheet(item: $editingEvent) { event in
-            PopUpMenu(isPresented: .constant(true)) {
-                EditEventView(event: event, selectedDate: selectedDate, editingEvent: $editingEvent)
+            
+            if editingEvent != nil {
+                PopUpMenu(isPresented: Binding(
+                    get: { editingEvent != nil },
+                    set: { if !$0 { editingEvent = nil } }
+                )) {
+                    EditEventView(event: editingEvent!, selectedDate: selectedDate, editingEvent: $editingEvent)
+                }
             }
         }
     }
