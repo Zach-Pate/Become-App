@@ -564,16 +564,14 @@ struct EventTileView: View {
     @Binding var isDragging: Bool
 
     // --- Gesture States ---
-    // Tracks the offset of the tile during a drag gesture.
     @State private var dragOffset: CGSize = .zero
-    // Tracks whether a drag has actually occurred, to differentiate from a simple long press.
-    @State private var hasDragged = false
+    @State private var dragStartTime: Date? = nil
+    @State private var isLongPressActive = false
 
     private var tileHeight: CGFloat {
         CGFloat(event.duration / 3600) * hourHeight
     }
     
-    // Calculates the final start time after a drag, including the snap-to-grid logic.
     private var draggedStartTime: TimeInterval {
         let timeOffset = (dragOffset.height / hourHeight) * 3600
         let newStartTime = event.startTime + timeOffset
@@ -585,41 +583,44 @@ struct EventTileView: View {
     }
     
     var body: some View {
-        // This combined gesture allows us to distinguish between a long press to edit and a long press to drag.
-        let longPressDragGesture = LongPressGesture(minimumDuration: 0.3)
-            .sequenced(before: DragGesture())
+        let dragGesture = DragGesture(minimumDistance: 0)
             .onChanged { value in
-                switch value {
-                case .first(true):
-                    // The long press has been recognized.
-                    if !isDragging {
-                        isDragging = true
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                case .second(true, let drag):
-                    // The user is now dragging after the long press.
-                    self.hasDragged = true
-                    self.dragOffset = drag?.translation ?? .zero
-                default:
-                    break
+                // On the first touch, record the start time.
+                if self.dragStartTime == nil {
+                    self.dragStartTime = Date()
+                }
+
+                // If the finger has been held down for 0.3s, activate the long press mode.
+                if !isLongPressActive && Date().timeIntervalSince(self.dragStartTime!) > 0.3 {
+                    isLongPressActive = true
+                    isDragging = true // This disables the main ScrollView.
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+
+                // If in long press mode, update the tile's visual offset.
+                if isLongPressActive {
+                    self.dragOffset = value.translation
                 }
             }
             .onEnded { value in
-                isDragging = false
-                
-                if hasDragged {
-                    // If the user dragged, update the event's start time.
-                    event.startTime = draggedStartTime
-                    saveEvents()
-                } else {
-                    // If the user didn't drag, it was a simple long press. Show the edit view.
-                    editingEvent = event
-                    // Provide a significant haptic feedback to indicate the edit action.
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                if isLongPressActive {
+                    let dragDistance = sqrt(pow(value.translation.width, 2) + pow(value.translation.height, 2))
+                    
+                    // Only act if the gesture was a drag (moved more than 10 points).
+                    if dragDistance > 10 {
+                        event.startTime = draggedStartTime
+                        saveEvents()
+                    } else {
+                        // Otherwise, it was a long press without a drag - trigger the edit view.
+                        editingEvent = event
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    }
                 }
                 
-                // Reset the gesture states for the next interaction.
-                self.hasDragged = false
+                // Reset all gesture-related states.
+                self.dragStartTime = nil
+                self.isLongPressActive = false
+                self.isDragging = false
                 self.dragOffset = .zero
             }
 
@@ -700,7 +701,7 @@ struct EventTileView: View {
         .clipped()
         .padding(.trailing, 10)
         .offset(y: dragOffset.height)
-        .gesture(longPressDragGesture)
+        .gesture(dragGesture)
     }
     
     private func formattedTime(_ timeInterval: TimeInterval) -> String {
