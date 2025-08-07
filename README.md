@@ -28,6 +28,7 @@ This is a SwiftUI app that helps you plan your day. It features a vertical timel
     *   Travel (Rust)
     *   Work (Indigo)
     *   Other (Gray)
+*   **Opaque Event Tiles:** Event tiles are now fully opaque, giving them a more solid and visually prominent appearance on the timeline.
 *   **24-Hour Scrollable Timeline:** The main view is a vertical timeline that displays your full day's schedule. The time labels are now perfectly centered on their corresponding hour markers.
 *   **Visual Snap Grid:** A faint grid of 10-minute increments provides a visual guide for event placement.
 *   **Live Time Indicator:** A horizontal bar, anchored to the left edge of the screen, shows the current time and updates every minute. The indicator has been styled for better visibility.

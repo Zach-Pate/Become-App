@@ -669,7 +669,7 @@ struct EventTileView: View {
 
         return ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 8)
-                .fill(event.color.opacity(0.8))
+                .fill(event.color)
             
             if event.duration >= 1800 {
                 VStack(alignment: .leading, spacing: 4) {
