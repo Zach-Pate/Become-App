@@ -905,10 +905,8 @@ struct NewEventView: View {
 }
 
 struct EditEventView: View {
-    @Binding var event: DayEvent
-    @Binding var events: [DayEvent]
+    @State var event: DayEvent
     let selectedDate: Date
-    let saveEvents: (Date) -> Void
     
     @State private var title: String
     @State private var eventDate: Date
@@ -921,21 +919,19 @@ struct EditEventView: View {
     
     @Environment(\.dismiss) var dismiss
     
-    init(event: Binding<DayEvent>, events: Binding<[DayEvent]>, selectedDate: Date, saveEvents: @escaping (Date) -> Void) {
-        self._event = event
-        self._events = events
+    init(event: DayEvent, selectedDate: Date) {
+        self._event = State(initialValue: event)
         self.selectedDate = selectedDate
-        self.saveEvents = saveEvents
         
         let startOfDay = Calendar.current.startOfDay(for: selectedDate)
-        _title = State(initialValue: event.wrappedValue.title)
+        _title = State(initialValue: event.title)
         _eventDate = State(initialValue: selectedDate)
-        _startTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime))
-        _endTime = State(initialValue: startOfDay.addingTimeInterval(event.wrappedValue.startTime + event.wrappedValue.duration))
-        _category = State(initialValue: event.wrappedValue.category)
-        _repeatOption = State(initialValue: event.wrappedValue.repeatOption)
+        _startTime = State(initialValue: startOfDay.addingTimeInterval(event.startTime))
+        _endTime = State(initialValue: startOfDay.addingTimeInterval(event.startTime + event.duration))
+        _category = State(initialValue: event.category)
+        _repeatOption = State(initialValue: event.repeatOption)
         
-        if case .weekly(let weekdays) = event.wrappedValue.repeatOption {
+        if case .weekly(let weekdays) = event.repeatOption {
             _selectedWeekdays = State(initialValue: weekdays)
         } else {
             _selectedWeekdays = State(initialValue: [])
@@ -1033,7 +1029,7 @@ struct EditEventView: View {
                 event.repeatOption = repeatOption
             }
             
-            saveEvents(selectedDate)
+            updateEvent()
             dismiss()
         }
         .disabled(endTime <= startTime)
@@ -1062,11 +1058,32 @@ struct EditEventView: View {
         }
     }
     
+    // MARK: - Data Persistence
+    
+    private func updateEvent() {
+        // For both single and repeating events, we now update the master list.
+        var masterEvents = loadMasterRepeatingEvents()
+        if let index = masterEvents.firstIndex(where: { $0.id == event.id }) {
+            masterEvents[index] = event
+        } else {
+            // If it's a single event not in the master list, add it.
+            // This logic might need refinement based on how single vs. repeating events are managed.
+            var dayEvents = loadEventsForDate(eventDate)
+            if let index = dayEvents.firstIndex(where: { $0.id == event.id }) {
+                dayEvents[index] = event
+                saveEventsForDate(dayEvents, for: eventDate)
+            }
+        }
+        saveMasterRepeatingEvents(masterEvents)
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
+    }
+
     private func addExceptionDate() {
         var repeatingEvents = loadMasterRepeatingEvents()
         if let index = repeatingEvents.firstIndex(where: { $0.seriesId == event.seriesId }) {
             repeatingEvents[index].exceptionDates.insert(selectedDate)
             saveMasterRepeatingEvents(repeatingEvents)
+            NotificationCenter.default.post(name: .eventsDidChange, object: nil)
         }
     }
     
@@ -1074,11 +1091,30 @@ struct EditEventView: View {
         var repeatingEvents = loadMasterRepeatingEvents()
         repeatingEvents.removeAll { $0.seriesId == seriesId }
         saveMasterRepeatingEvents(repeatingEvents)
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
     }
     
     private func removeSingleEvent() {
-        events.removeAll { $0.id == event.id }
-        saveEvents(selectedDate)
+        var dayEvents = loadEventsForDate(selectedDate)
+        dayEvents.removeAll { $0.id == event.id }
+        saveEventsForDate(dayEvents, for: selectedDate)
+        NotificationCenter.default.post(name: .eventsDidChange, object: nil)
+    }
+    
+    private func loadEventsForDate(_ date: Date) -> [DayEvent] {
+        let key = dateKey(for: date)
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let decodedEvents = try? JSONDecoder().decode([DayEvent].self, from: data) else {
+            return []
+        }
+        return decodedEvents
+    }
+
+    private func saveEventsForDate(_ events: [DayEvent], for date: Date) {
+        let key = dateKey(for: date)
+        if let encoded = try? JSONEncoder().encode(events) {
+            UserDefaults.standard.set(encoded, forKey: key)
+        }
     }
     
     private func loadMasterRepeatingEvents() -> [DayEvent] {
@@ -1093,6 +1129,12 @@ struct EditEventView: View {
         if let encoded = try? JSONEncoder().encode(events) {
             UserDefaults.standard.set(encoded, forKey: "masterRepeatingEvents")
         }
+    }
+
+    private func dateKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }
 
