@@ -224,6 +224,14 @@ struct DayView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 ZStack(alignment: .topLeading) {
+                    // Add invisible views with IDs for the ScrollViewReader to target.
+                    ForEach(0..<totalHours, id: \.self) { hour in
+                        Color.clear
+                            .frame(height: 0)
+                            .id(hour)
+                            .offset(y: CGFloat(hour) * hourHeight)
+                    }
+                    
                     TimelineView()
                         .frame(height: hourHeight * CGFloat(totalHours))
                     
